@@ -68,9 +68,9 @@ namespace SpreadsheetLight
             get { return iTextRotation; }
             set
             {
-                if (value >= -90 && value <= 90)
+                if (value.HasValue && (value.Value >= -90) && (value.Value <= 90))
                 {
-                    iTextRotation = value;
+                    iTextRotation = value.Value;
                 }
                 else
                 {
@@ -346,7 +346,7 @@ namespace SpreadsheetLight
                 }
             }
 
-            if (this.TextRotation != null) sb.AppendFormat(" textRotation=\"{0}\"", this.TextRotation.Value.ToString(CultureInfo.InvariantCulture));
+            if (this.TextRotation != null) sb.AppendFormat(" textRotation=\"{0}\"", this.TextRotationToOpenXmlValue(this.TextRotation.Value).ToString(CultureInfo.InvariantCulture));
             if (this.WrapText != null) sb.AppendFormat(" wrapText=\"{0}\"", this.WrapText.Value ? "1" : "0");
             if (this.Indent != null) sb.AppendFormat(" indent=\"{0}\"", this.Indent.Value.ToString(CultureInfo.InvariantCulture));
             if (this.RelativeIndent != null) sb.AppendFormat(" relativeIndent=\"{0}\"", this.RelativeIndent.Value.ToString(CultureInfo.InvariantCulture));

@@ -62,14 +62,14 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLA.SLLinePropertiesType Line { get { return this.ShapeProperties.Outline; } }
 
-        internal SLMarker(List<System.Drawing.Color> ThemeColors)
+        internal SLMarker(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             this.vSymbol = null;
             this.bySize = null;
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
         }
 
-        internal C.Marker ToMarker(bool IsStylish = false)
+        internal C.Marker ToMarker(bool IsStylish)
         {
             C.Marker m = new C.Marker();
             if (this.vSymbol != null) m.Symbol = new C.Symbol() { Val = this.vSymbol.Value };
@@ -85,7 +85,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLMarker Clone()
         {
-            SLMarker m = new SLMarker(this.ShapeProperties.listThemeColors);
+            SLMarker m = new SLMarker(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
             m.Symbol = this.Symbol;
             m.bySize = this.bySize;
             m.ShapeProperties = this.ShapeProperties.Clone();

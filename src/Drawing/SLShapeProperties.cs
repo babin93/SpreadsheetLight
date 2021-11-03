@@ -10,6 +10,7 @@ namespace SpreadsheetLight.Drawing
     internal class SLShapeProperties
     {
         internal List<System.Drawing.Color> listThemeColors;
+        internal bool ThrowExceptionsIfAny { get; set; }
 
         internal bool HasShapeProperties
         {
@@ -60,7 +61,7 @@ namespace SpreadsheetLight.Drawing
         internal SLRotation3D Rotation3D { get; set; }
         internal SLFormat3D Format3D { get; set; }
 
-        internal SLShapeProperties(List<System.Drawing.Color> ThemeColors)
+        internal SLShapeProperties(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             int i;
             this.listThemeColors = new List<System.Drawing.Color>();
@@ -68,6 +69,8 @@ namespace SpreadsheetLight.Drawing
             {
                 this.listThemeColors.Add(ThemeColors[i]);
             }
+
+            this.ThrowExceptionsIfAny = ThrowExceptionsIfAny;
 
             this.SetAllNull();
         }
@@ -82,8 +85,8 @@ namespace SpreadsheetLight.Drawing
             this.vPresetGeometry = A.ShapeTypeValues.Rectangle;
             this.HasPresetGeometry = false;
 
-            this.Fill = new SLFill(this.listThemeColors);
-            this.Outline = new SLLinePropertiesType(this.listThemeColors);
+            this.Fill = new SLFill(this.listThemeColors, this.ThrowExceptionsIfAny);
+            this.Outline = new SLLinePropertiesType(this.listThemeColors, this.ThrowExceptionsIfAny);
             this.EffectList = new SLEffectList(this.listThemeColors);
 
             this.Rotation3D = new SLRotation3D();
@@ -237,7 +240,7 @@ namespace SpreadsheetLight.Drawing
             return sp;
         }
 
-        internal C.ChartShapeProperties ToChartShapeProperties(bool IsStylish = false)
+        internal C.ChartShapeProperties ToChartShapeProperties(bool IsStylish)
         {
             C.ChartShapeProperties sp = new C.ChartShapeProperties();
 
@@ -384,7 +387,7 @@ namespace SpreadsheetLight.Drawing
         /// This is for C.ShapeProperties
         /// </summary>
         /// <returns></returns>
-        internal C.ShapeProperties ToCShapeProperties(bool IsStylish = false)
+        internal C.ShapeProperties ToCShapeProperties(bool IsStylish)
         {
             C.ShapeProperties sp = new C.ShapeProperties();
 
@@ -529,7 +532,7 @@ namespace SpreadsheetLight.Drawing
 
         internal SLShapeProperties Clone()
         {
-            SLShapeProperties sp = new SLShapeProperties(this.listThemeColors);
+            SLShapeProperties sp = new SLShapeProperties(this.listThemeColors, this.ThrowExceptionsIfAny);
             sp.HasBlackWhiteMode = this.HasBlackWhiteMode;
             sp.vBlackWhiteMode = this.vBlackWhiteMode;
             sp.HasTransform2D = this.HasTransform2D;

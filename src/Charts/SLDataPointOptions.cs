@@ -75,16 +75,16 @@ namespace SpreadsheetLight.Charts
 
         // pictureoptions?
 
-        internal SLDataPointOptions(List<System.Drawing.Color> ThemeColors)
+        internal SLDataPointOptions(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             this.InvertIfNegative = null;
-            this.Marker = new SLMarker(ThemeColors);
+            this.Marker = new SLMarker(ThemeColors, ThrowExceptionsIfAny);
             this.iExplosion = null;
             this.bBubble3D = null;
         }
 
-        internal C.DataPoint ToDataPoint(int index, bool IsStylish = false)
+        internal C.DataPoint ToDataPoint(int index, bool IsStylish)
         {
             C.DataPoint pt = new C.DataPoint();
 
@@ -103,7 +103,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLDataPointOptions Clone()
         {
-            SLDataPointOptions dpo = new SLDataPointOptions(this.ShapeProperties.listThemeColors);
+            SLDataPointOptions dpo = new SLDataPointOptions(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
             dpo.ShapeProperties = this.ShapeProperties.Clone();
             dpo.InvertIfNegative = this.InvertIfNegative;
             dpo.Marker = this.Marker.Clone();

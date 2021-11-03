@@ -56,7 +56,8 @@ namespace SpreadsheetLight.Charts
             set { this.MinAxisValue = value; }
         }
 
-        internal SLValueAxis(List<System.Drawing.Color> ThemeColors, bool IsStylish = false) : base(ThemeColors, IsStylish)
+        internal SLValueAxis(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
+            : base(ThemeColors, IsStylish, ThrowExceptionsIfAny)
         {
             this.CrossBetween = C.CrossBetweenValues.Between;
             this.MajorUnit = null;
@@ -76,7 +77,7 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
         /// <summary>
@@ -130,7 +131,7 @@ namespace SpreadsheetLight.Charts
             this.OtherAxisCrossesAt = 0;
         }
 
-        internal C.ValueAxis ToValueAxis(bool IsStylish = false)
+        internal C.ValueAxis ToValueAxis(bool IsStylish)
         {
             C.ValueAxis va = new C.ValueAxis();
             va.AxisId = new C.AxisId() { Val = this.AxisId };
@@ -278,7 +279,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLValueAxis Clone()
         {
-            SLValueAxis va = new SLValueAxis(this.ShapeProperties.listThemeColors);
+            SLValueAxis va = new SLValueAxis(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             va.Rotation = this.Rotation;
             va.Vertical = this.Vertical;
             va.Anchor = this.Anchor;

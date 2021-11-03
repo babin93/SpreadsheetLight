@@ -96,7 +96,7 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLA.SLFormat3D Format3D { get { return this.ShapeProperties.Format3D; } }
 
-        internal SLPlotArea(List<System.Drawing.Color> ThemeColors, bool Date1904, bool IsStylish = false)
+        internal SLPlotArea(List<System.Drawing.Color> ThemeColors, bool Date1904, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.InternalChartType = SLInternalChartType.Bar;
 
@@ -106,26 +106,26 @@ namespace SpreadsheetLight.Charts
             for (int i = 0; i < NumberOfChartTypes; ++i)
             {
                 this.UsedChartTypes[i] = false;
-                this.UsedChartOptions[i] = new SLChartOptions(ThemeColors);
+                this.UsedChartOptions[i] = new SLChartOptions(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             }
             this.DataSeries = new List<SLDataSeries>();
 
             this.Layout = new SLLayout();
 
-            this.PrimaryTextAxis = new SLTextAxis(ThemeColors, Date1904, IsStylish);
-            this.PrimaryValueAxis = new SLValueAxis(ThemeColors, IsStylish);
-            this.DepthAxis = new SLSeriesAxis(ThemeColors, IsStylish);
-            this.SecondaryTextAxis = new SLTextAxis(ThemeColors, Date1904, IsStylish);
-            this.SecondaryValueAxis = new SLValueAxis(ThemeColors, IsStylish);
+            this.PrimaryTextAxis = new SLTextAxis(ThemeColors, Date1904, IsStylish, ThrowExceptionsIfAny);
+            this.PrimaryValueAxis = new SLValueAxis(ThemeColors, IsStylish, ThrowExceptionsIfAny);
+            this.DepthAxis = new SLSeriesAxis(ThemeColors, IsStylish, ThrowExceptionsIfAny);
+            this.SecondaryTextAxis = new SLTextAxis(ThemeColors, Date1904, IsStylish, ThrowExceptionsIfAny);
+            this.SecondaryValueAxis = new SLValueAxis(ThemeColors, IsStylish, ThrowExceptionsIfAny);
 
             this.HasPrimaryAxes = false;
             this.HasDepthAxis = false;
             this.HasSecondaryAxes = false;
 
             this.ShowDataTable = false;
-            this.DataTable = new SLDataTable(ThemeColors, IsStylish);
+            this.DataTable = new SLDataTable(ThemeColors, IsStylish, ThrowExceptionsIfAny);
 
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             if (IsStylish)
             {
                 this.ShapeProperties.Fill.SetNoFill();
@@ -138,7 +138,7 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
         internal void SetDataSeriesChartType(SLDataSeriesChartType ChartType)
@@ -171,7 +171,7 @@ namespace SpreadsheetLight.Charts
             }
         }
 
-        internal C.PlotArea ToPlotArea(bool IsStylish = false)
+        internal C.PlotArea ToPlotArea(bool IsStylish)
         {
             C.PlotArea pa = new C.PlotArea();
             pa.Append(this.Layout.ToLayout());
@@ -185,7 +185,7 @@ namespace SpreadsheetLight.Charts
             // Find out the "correct" order next version I suppose...
 
             // Excel 2010 apparently sets this by default for any chart...
-            SLGroupDataLabelOptions gdlo = new SLGroupDataLabelOptions(this.ShapeProperties.listThemeColors);
+            SLGroupDataLabelOptions gdlo = new SLGroupDataLabelOptions(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
             gdlo.ShowLegendKey = false;
             gdlo.ShowValue = false;
             gdlo.ShowCategoryName = false;
@@ -261,7 +261,7 @@ namespace SpreadsheetLight.Charts
                 {
                     opc.Append(new C.SeriesLines()
                     {
-                        ChartShapeProperties = this.UsedChartOptions[iChartType].SeriesLinesShapeProperties.ToChartShapeProperties()
+                        ChartShapeProperties = this.UsedChartOptions[iChartType].SeriesLinesShapeProperties.ToChartShapeProperties(IsStylish)
                     });
                 }
                 else
@@ -317,7 +317,7 @@ namespace SpreadsheetLight.Charts
                 {
                     opc.Append(new C.SeriesLines()
                     {
-                        ChartShapeProperties = this.UsedChartOptions[iChartType].SeriesLinesShapeProperties.ToChartShapeProperties()
+                        ChartShapeProperties = this.UsedChartOptions[iChartType].SeriesLinesShapeProperties.ToChartShapeProperties(IsStylish)
                     });
                 }
                 else
@@ -1100,7 +1100,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLPlotArea Clone()
         {
-            SLPlotArea pa = new SLPlotArea(this.ShapeProperties.listThemeColors, this.PrimaryTextAxis.Date1904);
+            SLPlotArea pa = new SLPlotArea(this.ShapeProperties.listThemeColors, this.PrimaryTextAxis.Date1904, false, this.ShapeProperties.ThrowExceptionsIfAny);
             pa.InternalChartType = this.InternalChartType;
 
             int i;

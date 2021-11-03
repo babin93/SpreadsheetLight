@@ -139,6 +139,7 @@ namespace SpreadsheetLight
     public class SLComment
     {
         internal List<System.Drawing.Color> listThemeColors;
+        internal bool ThrowExceptionsIfAny { get; set; }
 
         // TODO: move with cells and size with cells
 
@@ -296,7 +297,7 @@ namespace SpreadsheetLight
         /// </summary>
         public bool Visible { get; set; }
 
-        internal SLComment(List<System.Drawing.Color> ThemeColors)
+        internal SLComment(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             int i;
             this.listThemeColors = new List<System.Drawing.Color>();
@@ -304,6 +305,8 @@ namespace SpreadsheetLight
             {
                 this.listThemeColors.Add(ThemeColors[i]);
             }
+
+            this.ThrowExceptionsIfAny = ThrowExceptionsIfAny;
 
             this.SetAllNull();
         }
@@ -322,7 +325,7 @@ namespace SpreadsheetLight
             this.fWidth = SLConstants.DefaultCommentBoxWidth;
             this.fHeight = SLConstants.DefaultCommentBoxHeight;
 
-            this.Fill = new SLA.SLFill(this.listThemeColors);
+            this.Fill = new SLA.SLFill(this.listThemeColors, this.ThrowExceptionsIfAny);
             this.Fill.SetSolidFill(System.Drawing.Color.FromArgb(255, 255, 225), 0);
             this.bFromTransparency = 0;
             this.bToTransparency = 0;
@@ -411,7 +414,7 @@ namespace SpreadsheetLight
 
         internal SLComment Clone()
         {
-            SLComment comm = new SLComment(this.listThemeColors);
+            SLComment comm = new SLComment(this.listThemeColors, this.ThrowExceptionsIfAny);
             comm.sAuthor = this.sAuthor;
             comm.rst = this.rst.Clone();
             comm.HasSetPosition = this.HasSetPosition;

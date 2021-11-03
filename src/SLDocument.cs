@@ -55,6 +55,23 @@ namespace SpreadsheetLight
         private bool IsNewSpreadsheet = true;
         private bool IsNewWorksheet = true;
 
+        private bool gbThrowExceptionsIfAny = false;
+        // This is a suggestion from David H. SpreadsheetLight originally swallows any exceptions
+        // so that the calling program using the library continues to function.
+        // It's designed this way because the calling program can be an automated scheduled program
+        // running in the wee hours of the morning. If there's a whole bunch of programs, then a failure
+        // can mean the whole schedule is screwed up. I'm not ready for that kind of responsibility...
+        // However, David suggested that maybe make it such that the developer (that's you) is allowed
+        // to take on this responsibility. Thus I'm exposing this property. You've been warned.
+        /// <summary>
+        /// Set to true to bubble exceptions up if there are any occurring within SpreadsheetLight. Set to false otherwise. The default is false.
+        /// </summary>
+        public bool ThrowExceptionsIfAny
+        {
+            get { return gbThrowExceptionsIfAny; }
+            set { gbThrowExceptionsIfAny = value; }
+        }
+
         /// <summary>
         /// The file name of the default blank spreadsheet. This is read-only.
         /// </summary>
@@ -192,6 +209,21 @@ namespace SpreadsheetLight
         internal int countSharedString;
         internal List<string> listSharedString;
         internal Dictionary<string, int> dictSharedStringHash;
+
+        internal HashSet<string> hsUniqueSharedString;
+        private bool gbWriteUniqueSharedStringCount = true;
+
+        /// <summary>
+        /// Set to true to write the unique shared string count property, false otherwise. The default is true.
+        /// Set this to false if you get an error opening the resulting file because at a high number of text strings,
+        /// SpreadsheetLight might count the number wrongly (because the Open XML specs are sort of convoluted).
+        /// </summary>
+        public bool WriteUniqueSharedStringCount
+        {
+            get { return gbWriteUniqueSharedStringCount; }
+            set { gbWriteUniqueSharedStringCount = value; }
+        }
+
 
         /// <summary>
         /// Create a new spreadsheet with a worksheet with the default sheet name.
@@ -667,13 +699,13 @@ namespace SpreadsheetLight
 
         private void InitialiseStylesheetWhatNots(SLThemeTypeValues ThemeType)
         {
-            SimpleTheme = new SLSimpleTheme(wbp, ThemeType);
+            SimpleTheme = new SLSimpleTheme(wbp, ThemeType, gbThrowExceptionsIfAny);
             this.LoadStylesheet();
         }
 
         private void InitialiseStylesheetWhatNots(SLThemeSettings ThemeSettings)
         {
-            SimpleTheme = new SLSimpleTheme(wbp, ThemeSettings);
+            SimpleTheme = new SLSimpleTheme(wbp, ThemeSettings, gbThrowExceptionsIfAny);
             this.LoadStylesheet();
         }
 
@@ -764,6 +796,7 @@ namespace SpreadsheetLight
             Row r;
             Cell c;
             SLCell slc;
+            SLSharedCellFormula scf;
 
             OpenXmlReader oxr = OpenXmlReader.Create(wsp);
             while (oxr.Read())
@@ -871,22 +904,67 @@ namespace SpreadsheetLight
                             c = (Cell)oxrRow.LoadCurrentElement();
                             slc = new SLCell();
                             slc.FromCell(c);
+
+                            // 22 Oct 2016: This is reassign any existing InlineString to the
+                            // shared string table.
+                            if (c.DataType != null && c.DataType.Value == CellValues.InlineString && c.InlineString != null)
+                            {
+                                slc.DataType = CellValues.SharedString;
+                                slc.NumericValue = this.DirectSaveToSharedStringTable(c.InlineString);
+                            }
+
                             if (c.CellReference != null)
                             {
                                 if (SLTool.FormatCellReferenceToRowColumnIndex(c.CellReference.Value, out iRowIndex, out iColumnIndex))
                                 {
                                     iGuessRowIndex = iRowIndex;
                                     iGuessColumnIndex = iColumnIndex;
-                                    slws.Cells[new SLCellPoint(iGuessRowIndex, iGuessColumnIndex)] = slc;
+                                    slws.CellWarehouse.SetValue(iGuessRowIndex, iGuessColumnIndex, slc);
                                 }
                                 else
                                 {
-                                    slws.Cells[new SLCellPoint(iGuessRowIndex, iGuessColumnIndex)] = slc;
+                                    slws.CellWarehouse.SetValue(iGuessRowIndex, iGuessColumnIndex, slc);
                                 }
                             }
                             else
                             {
-                                slws.Cells[new SLCellPoint(iGuessRowIndex, iGuessColumnIndex)] = slc;
+                                slws.CellWarehouse.SetValue(iGuessRowIndex, iGuessColumnIndex, slc);
+                            }
+
+                            // only if there's a cell formula
+                            // and if the formula type is not null and is Shared
+                            // and if there's a reference (list of cell ranges that links to this shared cell formula)
+                            // and if there's a shared index.
+                            // Open XML specs state that a shared cell formula must be Shared and there's a shared index.
+                            // Cells with a reference will be the base cells, and cells without a reference will
+                            // refer to those base cells.
+                            // And the base cells must be uniquely identified by the shared index.
+                            // Meaning if the reference property is not null, then the shared index must be unique.
+                            // For example, you can't have a cell formula with
+                            // ref="A1:B3" si=0
+                            // and another cell formula with
+                            // ref="F8:L10" si=0
+                            // I'm only checking for well-formed spreadsheets, so if it comes through, I'm assuming
+                            // the spreadsheet is ok. Like created by Excel would be good for a start.
+                            if (c.CellFormula != null
+                                && (c.CellFormula.FormulaType != null && c.CellFormula.FormulaType == CellFormulaValues.Shared)
+                                && c.CellFormula.Reference != null
+                                && c.CellFormula.SharedIndex != null)
+                            {
+                                if (!slws.SharedCellFormulas.ContainsKey(c.CellFormula.SharedIndex.Value))
+                                {
+                                    scf = new SLSharedCellFormula();
+                                    scf.BaseCellRowIndex = iGuessRowIndex;
+                                    scf.BaseCellColumnIndex = iGuessColumnIndex;
+                                    scf.SharedIndex = c.CellFormula.SharedIndex;
+                                    scf.Reference = SLTool.TranslateReferenceToCellPointRangeList(c.CellFormula.Reference);
+                                    scf.FormulaText = c.CellFormula.Text;
+                                    slws.SharedCellFormulas.Add(c.CellFormula.SharedIndex.Value, scf);
+
+                                    // then we remove it. So the only place we note the cell formula is with
+                                    // the shared list. Don't worry, we put it back when we're writing the worksheet.
+                                    c.CellFormula = null;
+                                }
                             }
                         }
                     }
@@ -1110,6 +1188,35 @@ namespace SpreadsheetLight
                     slws.Tables.Add(t);
                 }
             }
+
+            // TODO: as at 17 Jan 2014, I have forgotten what I planned to do here. Go me...
+            // I think there's an order and priority to the conditional formats, and it depends
+            // on whether it's normal conditional formats or the new 2010 version.
+            // I must've done some research, but I can't find the results already... poor future Vincent...
+
+            // determine priority and order of conditional formats
+            //if (slws.ConditionalFormattings.Count == 0 && slws.ConditionalFormattings2010.Count == 0)
+            //{
+            //    // this is probably the most common, so put it as the first condition (pun, haha)
+            //    // for optimisation. Aaaannnddd, we don't have to do anything here. Awesome, right?
+            //}
+            //else if (slws.ConditionalFormattings.Count > 0 && slws.ConditionalFormattings2010.Count == 0)
+            //{
+            //    for (int i = 0; i < slws.ConditionalFormattings.Count; ++i)
+            //    {
+            //        slws.ConditionalFormatOrder.Add(new SLConditionalFormatOrder()
+            //        {
+            //            Version = SLConditionalFormatVersionValue.Office
+            //        });
+            //    }
+            //}
+            //else if (slws.ConditionalFormattings.Count == 0 && slws.ConditionalFormattings2010.Count > 0)
+            //{   
+            //}
+            //else if (slws.ConditionalFormattings.Count > 0 && slws.ConditionalFormattings2010.Count > 0)
+            //{
+            //}
+            // no else because all conditions already in one of the if conditions.
         }
 
         private void WriteSelectedWorksheet()
@@ -1118,7 +1225,7 @@ namespace SpreadsheetLight
 
             this.CleanUpReallyEmptyCells();
 
-            int i = 0;
+            int i = 0, j = 0, k = 0;
             bool bFound = false;
             OpenXmlElement oxe;
 
@@ -1149,53 +1256,142 @@ namespace SpreadsheetLight
             }
             if (byMaxOutline > 0) slws.SheetFormatProperties.OutlineLevelColumn = byMaxOutline;
 
-            List<SLCellPoint> listCellRefKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-            listCellRefKeys.Sort(new SLCellReferencePointComparer());
+            SLCell c;
+            int iStartRowIndex = SLConstants.RowLimit + 1;
+            int iStartColumnIndex = SLConstants.ColumnLimit + 1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            // in case somehow the base cell doesn't exist. I mean, there's a lot going on for shared formulas...
+            foreach (var scfiter in slws.SharedCellFormulas)
+            {
+                for (k = scfiter.Value.Reference.Count - 1; k >= 0; --k)
+                {
+                    iStartRowIndex = scfiter.Value.Reference[k].StartRowIndex;
+                    iEndRowIndex = scfiter.Value.Reference[k].EndRowIndex;
+                    iStartColumnIndex = scfiter.Value.Reference[k].StartColumnIndex;
+                    iEndColumnIndex = scfiter.Value.Reference[k].EndColumnIndex;
+                    for (i = iStartRowIndex; i <= iEndRowIndex; ++i)
+                    {
+                        for (j = iStartColumnIndex; j <= iEndColumnIndex; ++j)
+                        {
+                            if (i == scfiter.Value.BaseCellRowIndex && j == scfiter.Value.BaseCellColumnIndex)
+                            {
+                                // is base cell
 
-            HashSet<int> hsRows = new HashSet<int>(listCellRefKeys.GroupBy(g => g.RowIndex).Select(s => s.Key).ToList<int>());
-            hsRows.UnionWith(slws.RowProperties.Keys.ToList<int>());
+                                if (slws.CellWarehouse.Exists(i, j))
+                                {
+                                    c = slws.CellWarehouse.Cells[i][j].Clone();
+                                    if (c.CellFormula == null) c.CellFormula = new SLCellFormula();
+                                    // need to set this? Whatever, just set and see what happens..
+                                    c.CellFormula.SharedIndex = scfiter.Value.SharedIndex;
+                                    c.CellFormula.Reference.Clear();
+                                    foreach (SLCellPointRange scfptrange in scfiter.Value.Reference)
+                                    {
+                                        c.CellFormula.Reference.Add(new SLCellPointRange(
+                                            scfptrange.StartRowIndex,
+                                            scfptrange.StartColumnIndex,
+                                            scfptrange.EndRowIndex,
+                                            scfptrange.EndColumnIndex));
+                                    }
+                                    c.CellFormula.FormulaText = scfiter.Value.FormulaText;
+                                    c.CellText = string.Empty;
+                                    slws.CellWarehouse.SetValue(i, j, c);
+                                }
+                                else
+                                {
+                                    // there must (??) be a base cell existing in the worksheet
+                                    // (otherwise where to find the formula?)
+                                    c = new SLCell();
+                                    c.DataType = CellValues.Number;
+                                    c.CellFormula = new SLCellFormula();
+                                    c.CellFormula.SharedIndex = scfiter.Value.SharedIndex;
+                                    foreach (SLCellPointRange scfptrange in scfiter.Value.Reference)
+                                    {
+                                        c.CellFormula.Reference.Add(new SLCellPointRange(
+                                            scfptrange.StartRowIndex,
+                                            scfptrange.StartColumnIndex,
+                                            scfptrange.EndRowIndex,
+                                            scfptrange.EndColumnIndex));
+                                    }
+                                    c.CellFormula.FormulaText = scfiter.Value.FormulaText;
+                                    c.CellText = string.Empty;
+                                    slws.CellWarehouse.SetValue(i, j, c);
+                                }
+                            }
+                            else
+                            {
+                                // is not base cell
+
+                                if (slws.CellWarehouse.Exists(i, j))
+                                {
+                                    c = slws.CellWarehouse.Cells[i][j].Clone();
+                                    // if not null, then we assume it has an actual directly set formula
+                                    // (or Array or DataTable type, but I don't know what to do with those...)
+                                    if (c.CellFormula == null)
+                                    {
+                                        c.DataType = CellValues.Number;
+                                        c.CellFormula = new SLCellFormula();
+                                        c.CellFormula.FormulaType = CellFormulaValues.Shared;
+                                        c.CellFormula.SharedIndex = scfiter.Value.SharedIndex;
+                                        slws.CellWarehouse.SetValue(i, j, c);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+            List<int> listColumnKeys;
+
+            foreach (int rpkey in slws.RowProperties.Keys.ToList<int>())
+            {
+                if (!listRowKeys.Contains(rpkey))
+                {
+                    listRowKeys.Add(rpkey);
+                }
+            }
 
             // this now contains every row index that's either in the list of row properties
             // or in the list of cells.
-            List<int> listRowIndex = hsRows.ToList<int>();
-            listRowIndex.Sort();
+            listRowKeys.Sort();
+            // also note that because the row indices of the RowProperties is included,
+            // the code below has to check for the index before accessing the cell dictionary.
 
             List<int> listColumnIndex = slws.ColumnProperties.Keys.ToList<int>();
             listColumnIndex.Sort();
 
-            int iDimensionStartRowIndex = SLConstants.RowLimit + 1;
-            int iDimensionStartColumnIndex = SLConstants.ColumnLimit + 1;
-            int iDimensionEndRowIndex = -1;
-            int iDimensionEndColumnIndex = -1;
+            // reusing the index variables for calculating the dimension property
+            iStartRowIndex = SLConstants.RowLimit + 1;
+            iStartColumnIndex = SLConstants.ColumnLimit + 1;
+            iEndRowIndex = -1;
+            iEndColumnIndex = -1;
 
-            if (listCellRefKeys.Count > 0 || listRowIndex.Count > 0 || listColumnIndex.Count > 0 || slws.MergeCells.Count > 0)
+            if (listRowKeys.Count > 0 || listColumnIndex.Count > 0 || slws.MergeCells.Count > 0)
             {
-                foreach (SLCellPoint refpt in slws.Cells.Keys)
+                foreach (int rowkey in listRowKeys)
                 {
-                    // just check for columns because row checking is already done with RowProperties
-                    // this cuts down on checking, and speed things up.
-                    if (refpt.ColumnIndex < iDimensionStartColumnIndex) iDimensionStartColumnIndex = refpt.ColumnIndex;
-                    if (refpt.ColumnIndex > iDimensionEndColumnIndex) iDimensionEndColumnIndex = refpt.ColumnIndex;
-                }
+                    if (rowkey < iStartRowIndex) iStartRowIndex = rowkey;
+                    if (rowkey > iEndRowIndex) iEndRowIndex = rowkey;
 
-                if (listRowIndex.Count > 0)
-                {
-                    if (listRowIndex[0] < iDimensionStartRowIndex) iDimensionStartRowIndex = listRowIndex[0];
-                    if (listRowIndex[listRowIndex.Count - 1] > iDimensionEndRowIndex) iDimensionEndRowIndex = listRowIndex[listRowIndex.Count - 1];
-                }
-
-                if (listColumnIndex.Count > 0)
-                {
-                    if (listColumnIndex[0] < iDimensionStartColumnIndex) iDimensionStartColumnIndex = listColumnIndex[0];
-                    if (listColumnIndex[listColumnIndex.Count - 1] > iDimensionEndColumnIndex) iDimensionEndColumnIndex = listColumnIndex[listColumnIndex.Count - 1];
+                    if (slws.CellWarehouse.Cells.ContainsKey(rowkey))
+                    {
+                        listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                        foreach (int colkey in listColumnKeys)
+                        {
+                            if (colkey < iStartColumnIndex) iStartColumnIndex = colkey;
+                            if (colkey > iEndColumnIndex) iEndColumnIndex = colkey;
+                        }
+                    }
                 }
 
                 foreach (SLMergeCell mc in slws.MergeCells)
                 {
-                    if (mc.StartRowIndex < iDimensionStartRowIndex) iDimensionStartRowIndex = mc.StartRowIndex;
-                    if (mc.StartColumnIndex < iDimensionStartColumnIndex) iDimensionStartColumnIndex = mc.StartColumnIndex;
-                    if (mc.EndRowIndex > iDimensionEndRowIndex) iDimensionEndRowIndex = mc.EndRowIndex;
-                    if (mc.EndColumnIndex > iDimensionEndColumnIndex) iDimensionEndColumnIndex = mc.EndColumnIndex;
+                    if (mc.StartRowIndex < iStartRowIndex) iStartRowIndex = mc.StartRowIndex;
+                    if (mc.StartColumnIndex < iStartColumnIndex) iStartColumnIndex = mc.StartColumnIndex;
+                    if (mc.EndRowIndex > iEndRowIndex) iEndRowIndex = mc.EndRowIndex;
+                    if (mc.EndColumnIndex > iEndColumnIndex) iEndColumnIndex = mc.EndColumnIndex;
                 }
 
                 // need to do for hyperlinks?
@@ -1209,25 +1405,20 @@ namespace SpreadsheetLight
             }
 
             string sDimensionCellRange = string.Empty;
-            if (iDimensionStartRowIndex > SLConstants.RowLimit) iDimensionStartRowIndex = 1;
-            if (iDimensionStartColumnIndex > SLConstants.ColumnLimit) iDimensionStartColumnIndex = 1;
-            if (iDimensionEndRowIndex < 1) iDimensionEndRowIndex = 1;
-            if (iDimensionEndColumnIndex < 1) iDimensionEndColumnIndex = 1;
-            if (iDimensionStartRowIndex == iDimensionEndRowIndex && iDimensionStartColumnIndex == iDimensionEndColumnIndex)
+            if (iStartRowIndex > SLConstants.RowLimit) iStartRowIndex = 1;
+            if (iStartColumnIndex > SLConstants.ColumnLimit) iStartColumnIndex = 1;
+            if (iEndRowIndex < 1) iEndRowIndex = 1;
+            if (iEndColumnIndex < 1) iEndColumnIndex = 1;
+            if (iStartRowIndex == iEndRowIndex && iStartColumnIndex == iEndColumnIndex)
             {
-                sDimensionCellRange = SLTool.ToCellReference(iDimensionStartRowIndex, iDimensionStartColumnIndex);
+                sDimensionCellRange = SLTool.ToCellReference(iStartRowIndex, iStartColumnIndex);
             }
             else
             {
-                sDimensionCellRange = string.Format("{0}:{1}", SLTool.ToCellReference(iDimensionStartRowIndex, iDimensionStartColumnIndex), SLTool.ToCellReference(iDimensionEndRowIndex, iDimensionEndColumnIndex));
+                sDimensionCellRange = string.Format("{0}:{1}", SLTool.ToCellReference(iStartRowIndex, iStartColumnIndex), SLTool.ToCellReference(iEndRowIndex, iEndColumnIndex));
             }
 
             Row r;
-            SLCell c;
-            int iRowIndex = 0;
-            int iCellDataKey = 0;
-            int iRowKey = 0;
-            SLCellPoint pt;
 
             if (!IsNewWorksheet)
             {
@@ -1375,33 +1566,27 @@ namespace SpreadsheetLight
 
                 SheetData sd = new SheetData();
 
-                iCellDataKey = 0;
-                for (iRowKey = 0; iRowKey < listRowIndex.Count; ++iRowKey)
+                foreach (int rowkey in listRowKeys)
                 {
-                    iRowIndex = listRowIndex[iRowKey];
-                    if (slws.RowProperties.ContainsKey(iRowIndex))
+                    if (slws.RowProperties.ContainsKey(rowkey))
                     {
-                        r = slws.RowProperties[iRowIndex].ToRow();
-                        r.RowIndex = (uint)iRowIndex;
+                        r = slws.RowProperties[rowkey].ToRow();
+                        r.RowIndex = (uint)rowkey;
                     }
                     else
                     {
                         r = new Row();
-                        r.RowIndex = (uint)iRowIndex;
+                        r.RowIndex = (uint)rowkey;
                     }
 
-                    while (iCellDataKey < listCellRefKeys.Count)
+                    if (slws.CellWarehouse.Cells.ContainsKey(rowkey))
                     {
-                        pt = listCellRefKeys[iCellDataKey];
-                        if (pt.RowIndex == iRowIndex)
+                        listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                        listColumnKeys.Sort();
+                        foreach (int colkey in listColumnKeys)
                         {
-                            c = slws.Cells[pt];
-                            r.Append(c.ToCell(SLTool.ToCellReference(pt.RowIndex, pt.ColumnIndex)));
-                            ++iCellDataKey;
-                        }
-                        else
-                        {
-                            break;
+                            c = slws.CellWarehouse.Cells[rowkey][colkey].Clone();
+                            r.Append(c.ToCell(SLTool.ToCellReference(rowkey, colkey)));
                         }
                     }
                     sd.Append(r);
@@ -1940,7 +2125,9 @@ namespace SpreadsheetLight
                                 || child is DataValidations || child is Hyperlinks || child is PrintOptions
                                 || child is PageMargins || child is PageSetup || child is HeaderFooter
                                 || child is RowBreaks || child is ColumnBreaks || child is CustomProperties
-                                || child is CellWatches || child is IgnoredErrors || child is SmartTags)
+                                || child is CellWatches || child is IgnoredErrors)
+                            //|| child is CellWatches || child is IgnoredErrors || child is SmartTags)
+                            // SmartTags is deprecated...
                             {
                                 oxe = child;
                                 bFound = true;
@@ -1988,7 +2175,8 @@ namespace SpreadsheetLight
                                 || child is DataValidations || child is Hyperlinks || child is PrintOptions
                                 || child is PageMargins || child is PageSetup || child is HeaderFooter
                                 || child is RowBreaks || child is ColumnBreaks || child is CustomProperties
-                                || child is CellWatches || child is IgnoredErrors || child is SmartTags
+                                || child is CellWatches || child is IgnoredErrors
+                                //|| child is CellWatches || child is IgnoredErrors || child is SmartTags
                                 || child is DocumentFormat.OpenXml.Spreadsheet.Drawing)
                             {
                                 oxe = child;
@@ -2056,7 +2244,8 @@ namespace SpreadsheetLight
                             || child is DataValidations || child is Hyperlinks || child is PrintOptions
                             || child is PageMargins || child is PageSetup || child is HeaderFooter
                             || child is RowBreaks || child is ColumnBreaks || child is CustomProperties
-                            || child is CellWatches || child is IgnoredErrors || child is SmartTags
+                            || child is CellWatches || child is IgnoredErrors
+                            //|| child is CellWatches || child is IgnoredErrors || child is SmartTags
                             || child is DocumentFormat.OpenXml.Spreadsheet.Drawing
                             || child is LegacyDrawing || child is LegacyDrawingHeaderFooter)
                         {
@@ -2133,7 +2322,8 @@ namespace SpreadsheetLight
                             || child is DataValidations || child is Hyperlinks || child is PrintOptions
                             || child is PageMargins || child is PageSetup || child is HeaderFooter
                             || child is RowBreaks || child is ColumnBreaks || child is CustomProperties
-                            || child is CellWatches || child is IgnoredErrors || child is SmartTags
+                            || child is CellWatches || child is IgnoredErrors
+                            //|| child is CellWatches || child is IgnoredErrors || child is SmartTags
                             || child is DocumentFormat.OpenXml.Spreadsheet.Drawing
                             || child is LegacyDrawing || child is LegacyDrawingHeaderFooter
                             || child is Picture || child is OleObjects || child is Controls
@@ -2412,15 +2602,13 @@ namespace SpreadsheetLight
 
                 oxw.WriteStartElement(new SheetData());
 
-                iCellDataKey = 0;
-                for (iRowKey = 0; iRowKey < listRowIndex.Count; ++iRowKey)
+                foreach (int rowkey in listRowKeys)
                 {
-                    iRowIndex = listRowIndex[iRowKey];
                     oxa = new List<OpenXmlAttribute>();
-                    oxa.Add(new OpenXmlAttribute("r", null, iRowIndex.ToString(CultureInfo.InvariantCulture)));
-                    if (slws.RowProperties.ContainsKey(iRowIndex))
+                    oxa.Add(new OpenXmlAttribute("r", null, rowkey.ToString(CultureInfo.InvariantCulture)));
+                    if (slws.RowProperties.ContainsKey(rowkey))
                     {
-                        rp = slws.RowProperties[iRowIndex];
+                        rp = slws.RowProperties[rowkey];
                         if (rp.StyleIndex > 0)
                         {
                             oxa.Add(new OpenXmlAttribute("s", null, rp.StyleIndex.ToString(CultureInfo.InvariantCulture)));
@@ -2461,15 +2649,16 @@ namespace SpreadsheetLight
                     }
                     oxw.WriteStartElement(new Row(), oxa);
 
-                    while (iCellDataKey < listCellRefKeys.Count)
+                    if (slws.CellWarehouse.Cells.ContainsKey(rowkey))
                     {
-                        pt = listCellRefKeys[iCellDataKey];
-                        if (pt.RowIndex == iRowIndex)
+                        listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                        listColumnKeys.Sort();
+                        foreach (int colkey in listColumnKeys)
                         {
-                            c = slws.Cells[pt];
+                            c = slws.CellWarehouse.Cells[rowkey][colkey];
 
                             oxa = new List<OpenXmlAttribute>();
-                            oxa.Add(new OpenXmlAttribute("r", null, SLTool.ToCellReference(pt.RowIndex, pt.ColumnIndex)));
+                            oxa.Add(new OpenXmlAttribute("r", null, SLTool.ToCellReference(rowkey, colkey)));
                             if (c.StyleIndex > 0)
                             {
                                 oxa.Add(new OpenXmlAttribute("s", null, c.StyleIndex.ToString(CultureInfo.InvariantCulture)));
@@ -2550,17 +2739,14 @@ namespace SpreadsheetLight
                                 }
                             }
                             oxw.WriteEndElement();
-
-                            ++iCellDataKey;
-                        }
-                        else
-                        {
-                            break;
                         }
                     }
+
+                    // end of Row
                     oxw.WriteEndElement();
                 }
 
+                // end of SheetData
                 oxw.WriteEndElement();
 
                 #region Sheet protection
@@ -3336,128 +3522,136 @@ namespace SpreadsheetLight
             
             xl.Close();
 
+            // 2020-11-14 .NET Standard update
+            // Opening a part more than once for writing results in the error:
+            // "Entries cannot be opened multiple times in Update mode"
+            // This is a hard limitation from System.IO.Compression
+            // Perhaps in future, this soft fix can be set at the point of creating
+            // the worksheet parts. But is it still worth it?
+            #region LibreOffice and possibly iPhone/iPad fix
             // This will solve LibreOffice not opening documents correctly if document metadata is set.
             // Also, (hopefully) this solves any iPhone/iPad issue with opening documents.
-            string sDocSchema = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument";
-            string sDocFolder = string.Empty;
-            int index;
-            List<string> listUri = new List<string>();
-            using (Package pkg = Package.Open(memstream, FileMode.Open, FileAccess.ReadWrite))
-            {
-                foreach (PackageRelationship pkgrel in pkg.GetRelationshipsByType(sDocSchema))
-                {
-                    sDocFolder = pkgrel.TargetUri.OriginalString;
-                    // there should only be one
-                    break;
-                }
+            //string sDocSchema = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument";
+            //string sDocFolder = string.Empty;
+            //int index;
+            //List<string> listUri = new List<string>();
+            //using (Package pkg = Package.Open(memstream, FileMode.Open, FileAccess.ReadWrite))
+            //{
+            //    foreach (PackageRelationship pkgrel in pkg.GetRelationshipsByType(sDocSchema))
+            //    {
+            //        sDocFolder = pkgrel.TargetUri.OriginalString;
+            //        // there should only be one
+            //        break;
+            //    }
 
-                sDocFolder = sDocFolder.TrimStart("/".ToCharArray());
-                index = sDocFolder.LastIndexOf("/");
-                if (index <= 0) sDocFolder = string.Empty;
-                else sDocFolder = sDocFolder.Substring(0, index);
+            //    sDocFolder = sDocFolder.TrimStart("/".ToCharArray());
+            //    index = sDocFolder.LastIndexOf("/");
+            //    if (index <= 0) sDocFolder = string.Empty;
+            //    else sDocFolder = sDocFolder.Substring(0, index);
 
-                if (sDocFolder.Length > 0)
-                {
-                    foreach (PackagePart pkgpart in pkg.GetParts())
-                    {
-                        if (pkgpart.Uri.OriginalString.EndsWith(".rels"))
-                        {
-                            listUri.Add(pkgpart.Uri.OriginalString);
-                        }
-                    }
+            //    if (sDocFolder.Length > 0)
+            //    {
+            //        foreach (PackagePart pkgpart in pkg.GetParts())
+            //        {
+            //            if (pkgpart.Uri.OriginalString.EndsWith(".rels"))
+            //            {
+            //                listUri.Add(pkgpart.Uri.OriginalString);
+            //            }
+            //        }
 
-                    Uri reluri;
-                    string sRelUri;
-                    string sFolder;
+            //        Uri reluri;
+            //        string sRelUri;
+            //        string sFolder;
 
-                    int iFolderCount = 0;
-                    int iRelsCase = -1;
-                    string sRelSchema = "http://schemas.openxmlformats.org/package/2006/relationships";
-                    XName targetattr = XName.Get("Target");
+            //        int iFolderCount = 0;
+            //        int iRelsCase = -1;
+            //        string sRelSchema = "http://schemas.openxmlformats.org/package/2006/relationships";
+            //        XName targetattr = XName.Get("Target");
 
-                    foreach (string sUri in listUri)
-                    {
-                        if (sUri.StartsWith("/_rels/"))
-                        {
-                            iRelsCase = 0;
-                        }
-                        else if (sUri.StartsWith(string.Format("/{0}/_rels/", sDocFolder)))
-                        {
-                            iRelsCase = 1;
-                        }
-                        else if (sUri.StartsWith(string.Format("/{0}/", sDocFolder)))
-                        {
-                            iRelsCase = 2;
+            //        foreach (string sUri in listUri)
+            //        {
+            //            if (sUri.StartsWith("/_rels/"))
+            //            {
+            //                iRelsCase = 0;
+            //            }
+            //            else if (sUri.StartsWith(string.Format("/{0}/_rels/", sDocFolder)))
+            //            {
+            //                iRelsCase = 1;
+            //            }
+            //            else if (sUri.StartsWith(string.Format("/{0}/", sDocFolder)))
+            //            {
+            //                iRelsCase = 2;
 
-                            // Originally "/{docFolder}/drawings/_rels/drawing1.xml.rels"
-                            // Now "drawings/_rels/drawing1.xml.rels"
-                            // +2 for the start and end slashes
-                            sFolder = sUri.Substring(sDocFolder.Length + 2);
-                            index = sFolder.IndexOf("/_rels/");
-                            // We want to get "drawings/", that's why we +1 to include the slash
-                            sFolder = sFolder.Substring(0, index + 1);
-                            // count the number of slashes. A quick and dirty way of counting
-                            // how many folders we are in.
-                            iFolderCount = sFolder.Length - sFolder.Replace("/", "").Length;
-                        }
-                        else
-                        {
-                            // we're not interested in processing anything other than the above
-                            iRelsCase = -1;
-                            continue;
-                        }
+            //                // Originally "/{docFolder}/drawings/_rels/drawing1.xml.rels"
+            //                // Now "drawings/_rels/drawing1.xml.rels"
+            //                // +2 for the start and end slashes
+            //                sFolder = sUri.Substring(sDocFolder.Length + 2);
+            //                index = sFolder.IndexOf("/_rels/");
+            //                // We want to get "drawings/", that's why we +1 to include the slash
+            //                sFolder = sFolder.Substring(0, index + 1);
+            //                // count the number of slashes. A quick and dirty way of counting
+            //                // how many folders we are in.
+            //                iFolderCount = sFolder.Length - sFolder.Replace("/", "").Length;
+            //            }
+            //            else
+            //            {
+            //                // we're not interested in processing anything other than the above
+            //                iRelsCase = -1;
+            //                continue;
+            //            }
 
-                        reluri = new Uri(sUri, UriKind.Relative);
-                        if (pkg.PartExists(reluri))
-                        {
-                            XDocument xdoc = XDocument.Load(XmlReader.Create(pkg.GetPart(reluri).GetStream()));
-                            foreach (XElement xelem in xdoc.Elements(XName.Get("Relationships", sRelSchema)).Elements(XName.Get("Relationship", sRelSchema)))
-                            {
-                                sRelUri = xelem.Attribute(targetattr).Value;
+            //            reluri = new Uri(sUri, UriKind.Relative);
+            //            if (pkg.PartExists(reluri))
+            //            {
+            //                XDocument xdoc = XDocument.Load(XmlReader.Create(pkg.GetPart(reluri).GetStream()));
+            //                foreach (XElement xelem in xdoc.Elements(XName.Get("Relationships", sRelSchema)).Elements(XName.Get("Relationship", sRelSchema)))
+            //                {
+            //                    sRelUri = xelem.Attribute(targetattr).Value;
 
-                                switch (iRelsCase)
-                                {
-                                    case 0:
-                                        sRelUri = sRelUri.TrimStart("/".ToCharArray());
-                                        break;
-                                    case 1:
-                                        if (sRelUri.StartsWith(string.Format("/{0}/", sDocFolder)))
-                                        {
-                                            // +2 for the start and end slashes
-                                            sRelUri = sRelUri.Substring(sDocFolder.Length + 2);
-                                        }
-                                        break;
-                                    case 2:
-                                        if (sRelUri.StartsWith(string.Format("/{0}/", sDocFolder)))
-                                        {
-                                            // +2 for the start and end slashes
-                                            sRelUri = sRelUri.Substring(sDocFolder.Length + 2);
-                                            for (index = 0; index < iFolderCount; ++index)
-                                            {
-                                                sRelUri = "../" + sRelUri;
-                                            }
-                                        }
-                                        break;
-                                }
+            //                    switch (iRelsCase)
+            //                    {
+            //                        case 0:
+            //                            sRelUri = sRelUri.TrimStart("/".ToCharArray());
+            //                            break;
+            //                        case 1:
+            //                            if (sRelUri.StartsWith(string.Format("/{0}/", sDocFolder)))
+            //                            {
+            //                                // +2 for the start and end slashes
+            //                                sRelUri = sRelUri.Substring(sDocFolder.Length + 2);
+            //                            }
+            //                            break;
+            //                        case 2:
+            //                            if (sRelUri.StartsWith(string.Format("/{0}/", sDocFolder)))
+            //                            {
+            //                                // +2 for the start and end slashes
+            //                                sRelUri = sRelUri.Substring(sDocFolder.Length + 2);
+            //                                for (index = 0; index < iFolderCount; ++index)
+            //                                {
+            //                                    sRelUri = "../" + sRelUri;
+            //                                }
+            //                            }
+            //                            break;
+            //                    }
 
-                                xelem.Attribute(targetattr).Value = sRelUri;
-                            }
+            //                    xelem.Attribute(targetattr).Value = sRelUri;
+            //                }
 
-                            using (MemoryStream ms = new MemoryStream())
-                            {
-                                StreamWriter sw = new StreamWriter(ms);
-                                xdoc.Save(sw);
-                                pkg.GetPart(reluri).GetStream(FileMode.Create, FileAccess.Write).Write(ms.ToArray(), 0, (int)ms.Length);
-                                sw.Close();
-                            }
-                        }
-                    }
-                }
-                // else the doc folder is empty string, then don't have to do anything.
-                // Although that seems unlikely...
+            //                using (MemoryStream ms = new MemoryStream())
+            //                {
+            //                    StreamWriter sw = new StreamWriter(ms);
+            //                    xdoc.Save(sw);
+            //                    pkg.GetPart(reluri).GetStream(FileMode.Create, FileAccess.Write).Write(ms.ToArray(), 0, (int)ms.Length);
+            //                    sw.Close();
+            //                }
+            //            }
+            //        }
+            //    }
+            //    // else the doc folder is empty string, then don't have to do anything.
+            //    // Although that seems unlikely...
 
-                pkg.Close();
-            }
+            //    pkg.Close();
+            //}
+            #endregion
 
             this.NullifyInternalDataStores();
         }
@@ -3517,6 +3711,7 @@ namespace SpreadsheetLight
             //countSharedString = 0;
             listSharedString = null;
             dictSharedStringHash = null;
+            hsUniqueSharedString = null;
 
             StylesheetColors = null;
             TableStylesDefaultTableStyle = null;
@@ -3525,6 +3720,7 @@ namespace SpreadsheetLight
 
         /// <summary>
         /// Saves the spreadsheet. If it's a newly created spreadsheet, the default blank file name is used. If it's an existing spreadsheet, the given file name is used. WARNING: The existing spreadsheet will be overwritten without prompts.
+        /// NOTE: This is a terminal method, meaning all internal memory stores will be nulled, cleared and nuked after executing this method. If you want some data, get it before this.
         /// </summary>
         public void Save()
         {
@@ -3537,6 +3733,7 @@ namespace SpreadsheetLight
 
         /// <summary>
         /// Saves the spreadsheet to a given file name.
+        /// NOTE: This is a terminal method, meaning all internal memory stores will be nulled, cleared and nuked after executing this method. If you want some data, get it before this.
         /// </summary>
         /// <param name="FileName">The file name of the spreadsheet to be saved to.</param>
         public void SaveAs(string FileName)
@@ -3553,6 +3750,7 @@ namespace SpreadsheetLight
 
         /// <summary>
         /// Saves the spreadsheet to a stream.
+        /// NOTE: This is a terminal method, meaning all internal memory stores will be nulled, cleared and nuked after executing this method. If you want some data, get it before this.
         /// </summary>
         /// <param name="OutputStream">The output stream.</param>
         public void SaveAs(Stream OutputStream)
@@ -3565,6 +3763,7 @@ namespace SpreadsheetLight
 
         /// <summary>
         /// Close the spreadsheet without saving.
+        /// NOTE: This is a terminal method, meaning all internal memory stores will be nulled, cleared and nuked after executing this method. If you want some data, get it before this.
         /// </summary>
         public void CloseWithoutSaving()
         {

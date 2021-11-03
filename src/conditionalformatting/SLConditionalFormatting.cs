@@ -6,6 +6,26 @@ using X14 = DocumentFormat.OpenXml.Office2010.Excel;
 
 namespace SpreadsheetLight
 {
+    internal enum SLConditionalFormatVersionValue
+    {
+        Office = 0,
+        Office2010
+    }
+
+    internal struct SLConditionalFormatOrder
+    {
+        internal SLConditionalFormatVersionValue Version;
+        internal int? Priority;
+        internal int Order;
+
+        internal SLConditionalFormatOrder(SLConditionalFormatVersionValue Version, int? Priority, int Order)
+        {
+            this.Version = Version;
+            this.Priority = Priority;
+            this.Order = Order; // 0 by default?
+        }
+    }
+
     /// <summary>
     /// Built-in data bar types.
     /// </summary>
@@ -1917,7 +1937,21 @@ namespace SpreadsheetLight
             cfr.Operator = IncludeEquality ? ConditionalFormattingOperatorValues.GreaterThanOrEqual : ConditionalFormattingOperatorValues.GreaterThan;
             cfr.HasOperator = true;
 
-            cfr.Formulas.Add(this.GetFormulaFromText(Value));
+            // 30 Jan 2017: non-numeric values used to be automatically quoted
+            // but might be a formula expression like $E$1
+            if (Value.StartsWith("="))
+            {
+                string s = Value;
+                if (Value.Length > 1)
+                {
+                    s = Value.Substring(1);
+                }
+                cfr.Formulas.Add(new Formula(s));
+            }
+            else
+            {
+                cfr.Formulas.Add(this.GetFormulaFromText(Value));
+            }
 
             cfr.DifferentialFormat = HighlightStyle.Clone();
             cfr.HasDifferentialFormat = true;
@@ -1954,7 +1988,21 @@ namespace SpreadsheetLight
             cfr.Operator = IncludeEquality ? ConditionalFormattingOperatorValues.LessThanOrEqual : ConditionalFormattingOperatorValues.LessThan;
             cfr.HasOperator = true;
 
-            cfr.Formulas.Add(this.GetFormulaFromText(Value));
+            // 30 Jan 2017: non-numeric values used to be automatically quoted
+            // but might be a formula expression like $E$1
+            if (Value.StartsWith("="))
+            {
+                string s = Value;
+                if (Value.Length > 1)
+                {
+                    s = Value.Substring(1);
+                }
+                cfr.Formulas.Add(new Formula(s));
+            }
+            else
+            {
+                cfr.Formulas.Add(this.GetFormulaFromText(Value));
+            }
 
             cfr.DifferentialFormat = HighlightStyle.Clone();
             cfr.HasDifferentialFormat = true;
@@ -1993,8 +2041,37 @@ namespace SpreadsheetLight
             cfr.Operator = IsBetween ? ConditionalFormattingOperatorValues.Between : ConditionalFormattingOperatorValues.NotBetween;
             cfr.HasOperator = true;
 
-            cfr.Formulas.Add(this.GetFormulaFromText(Value1));
-            cfr.Formulas.Add(this.GetFormulaFromText(Value2));
+            string s;
+
+            // 30 Jan 2017: non-numeric values used to be automatically quoted
+            // but might be a formula expression like $E$1
+            if (Value1.StartsWith("="))
+            {
+                s = Value1;
+                if (Value1.Length > 1)
+                {
+                    s = Value1.Substring(1);
+                }
+                cfr.Formulas.Add(new Formula(s));
+            }
+            else
+            {
+                cfr.Formulas.Add(this.GetFormulaFromText(Value1));
+            }
+
+            if (Value2.StartsWith("="))
+            {
+                s = Value2;
+                if (Value2.Length > 1)
+                {
+                    s = Value2.Substring(1);
+                }
+                cfr.Formulas.Add(new Formula(s));
+            }
+            else
+            {
+                cfr.Formulas.Add(this.GetFormulaFromText(Value2));
+            }
 
             cfr.DifferentialFormat = HighlightStyle.Clone();
             cfr.HasDifferentialFormat = true;
@@ -2031,7 +2108,21 @@ namespace SpreadsheetLight
             cfr.Operator = IsEqual ? ConditionalFormattingOperatorValues.Equal : ConditionalFormattingOperatorValues.NotEqual;
             cfr.HasOperator = true;
 
-            cfr.Formulas.Add(this.GetFormulaFromText(Value));
+            // 30 Jan 2017: non-numeric values used to be automatically quoted
+            // but might be a formula expression like $E$1
+            if (Value.StartsWith("="))
+            {
+                string s = Value;
+                if (Value.Length > 1)
+                {
+                    s = Value.Substring(1);
+                }
+                cfr.Formulas.Add(new Formula(s));
+            }
+            else
+            {
+                cfr.Formulas.Add(this.GetFormulaFromText(Value));
+            }
 
             cfr.DifferentialFormat = HighlightStyle.Clone();
             cfr.HasDifferentialFormat = true;
@@ -2064,7 +2155,21 @@ namespace SpreadsheetLight
         private void HighlightCellsContainingText(bool IsContaining, string Value, SLDifferentialFormat HighlightStyle)
         {
             SLConditionalFormattingRule cfr = new SLConditionalFormattingRule();
-            cfr.Text = Value;
+
+            string s = Value;
+            bool bIsFormula = false;
+            // 30 Jan 2017: non-numeric values used to be automatically quoted
+            // but might be a formula expression like $E$1
+            if (Value.StartsWith("="))
+            {
+                bIsFormula = true;
+                if (Value.Length > 1)
+                {
+                    s = Value.Substring(1);
+                }
+            }
+
+            cfr.Text = s;
 
             Formula f = new Formula();
             string sRef = string.Empty;
@@ -2077,14 +2182,14 @@ namespace SpreadsheetLight
                 cfr.Type = ConditionalFormatValues.ContainsText;
                 cfr.Operator = ConditionalFormattingOperatorValues.ContainsText;
                 cfr.HasOperator = true;
-                f.Text = string.Format("NOT(ISERROR(SEARCH({0},{1})))", this.GetCleanedStringFromText(Value), sRef);
+                f.Text = string.Format("NOT(ISERROR(SEARCH({0},{1})))", bIsFormula ? s : this.GetCleanedStringFromText(Value), sRef);
             }
             else
             {
                 cfr.Type = ConditionalFormatValues.NotContainsText;
                 cfr.Operator = ConditionalFormattingOperatorValues.NotContains;
                 cfr.HasOperator = true;
-                f.Text = string.Format("ISERROR(SEARCH({0},{1}))", this.GetCleanedStringFromText(Value), sRef);
+                f.Text = string.Format("ISERROR(SEARCH({0},{1}))", bIsFormula ? s : this.GetCleanedStringFromText(Value), sRef);
             }
             cfr.Formulas.Add(f);
 
@@ -2117,7 +2222,21 @@ namespace SpreadsheetLight
         private void HighlightCellsBeginningWith(string Value, SLDifferentialFormat HighlightStyle)
         {
             SLConditionalFormattingRule cfr = new SLConditionalFormattingRule();
-            cfr.Text = Value;
+
+            string s = Value;
+            bool bIsFormula = false;
+            // 30 Jan 2017: non-numeric values used to be automatically quoted
+            // but might be a formula expression like $E$1
+            if (Value.StartsWith("="))
+            {
+                bIsFormula = true;
+                if (Value.Length > 1)
+                {
+                    s = Value.Substring(1);
+                }
+            }
+
+            cfr.Text = s;
 
             Formula f = new Formula();
             string sRef = string.Empty;
@@ -2128,7 +2247,7 @@ namespace SpreadsheetLight
             cfr.Type = ConditionalFormatValues.BeginsWith;
             cfr.Operator = ConditionalFormattingOperatorValues.BeginsWith;
             cfr.HasOperator = true;
-            f.Text = string.Format("LEFT({0},{1})={2}", sRef, Value.Length, this.GetCleanedStringFromText(Value));
+            f.Text = string.Format("LEFT({0},{1})={2}", sRef, bIsFormula ? string.Format("LEN({0})", s) : Value.Length.ToString(), bIsFormula ? s : this.GetCleanedStringFromText(Value));
             cfr.Formulas.Add(f);
 
             cfr.DifferentialFormat = HighlightStyle.Clone();
@@ -2160,7 +2279,21 @@ namespace SpreadsheetLight
         private void HighlightCellsEndingWith(string Value, SLDifferentialFormat HighlightStyle)
         {
             SLConditionalFormattingRule cfr = new SLConditionalFormattingRule();
-            cfr.Text = Value;
+
+            string s = Value;
+            bool bIsFormula = false;
+            // 30 Jan 2017: non-numeric values used to be automatically quoted
+            // but might be a formula expression like $E$1
+            if (Value.StartsWith("="))
+            {
+                bIsFormula = true;
+                if (Value.Length > 1)
+                {
+                    s = Value.Substring(1);
+                }
+            }
+
+            cfr.Text = s;
 
             Formula f = new Formula();
             string sRef = string.Empty;
@@ -2171,7 +2304,7 @@ namespace SpreadsheetLight
             cfr.Type = ConditionalFormatValues.EndsWith;
             cfr.Operator = ConditionalFormattingOperatorValues.EndsWith;
             cfr.HasOperator = true;
-            f.Text = string.Format("RIGHT({0},{1})={2}", sRef, Value.Length, this.GetCleanedStringFromText(Value));
+            f.Text = string.Format("RIGHT({0},{1})={2}", sRef, bIsFormula ? string.Format("LEN({0})", s) : Value.Length.ToString(), bIsFormula ? s : this.GetCleanedStringFromText(Value));
             cfr.Formulas.Add(f);
 
             cfr.DifferentialFormat = HighlightStyle.Clone();

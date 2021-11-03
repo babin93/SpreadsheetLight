@@ -65,13 +65,13 @@ namespace SpreadsheetLight.Charts
 
         internal SLFont Font { get; set; }
 
-        internal SLDataTable(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLDataTable(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.ShowHorizontalBorder = true;
             this.ShowVerticalBorder = true;
             this.ShowOutlineBorder = true;
             this.ShowLegendKeys = true;
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
 
             if (IsStylish)
             {
@@ -92,7 +92,7 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace SpreadsheetLight.Charts
             this.Font = Font.Clone();
         }
 
-        internal C.DataTable ToDataTable(bool IsStylish = false)
+        internal C.DataTable ToDataTable(bool IsStylish)
         {
             C.DataTable dt = new C.DataTable();
 
@@ -173,7 +173,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLDataTable Clone()
         {
-            SLDataTable dt = new SLDataTable(this.ShapeProperties.listThemeColors);
+            SLDataTable dt = new SLDataTable(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             dt.ShapeProperties = this.ShapeProperties.Clone();
             dt.ShowHorizontalBorder = this.ShowHorizontalBorder;
             dt.ShowVerticalBorder = this.ShowVerticalBorder;

@@ -411,16 +411,20 @@ namespace SpreadsheetLight
             }
             else
             {
-                if (Regex.IsMatch(DataSource, "^\\s*\\$[A-Za-z]{1,3}\\$[0-9]{1,7}"))
-                {
-                    this.Formula1 = DataSource;
-                }
-                else
-                {
-                    // data source is something like 1,2,3
-                    // we need to make it "1,2,3"
-                    this.Formula1 = string.Format("\"{0}\"", DataSource);
-                }
+                this.Formula1 = DataSource;
+
+                // NOTE (9 Dec 2016): what was I thinking? Normally the data source won't be weird...
+                // Thanks to Ryan B for emailing in!
+                //if (Regex.IsMatch(DataSource, "^\\s*\\$[A-Za-z]{1,3}\\$[0-9]{1,7}"))
+                //{
+                //    this.Formula1 = DataSource;
+                //}
+                //else
+                //{
+                //    // data source is something like 1,2,3
+                //    // we need to make it "1,2,3"
+                //    this.Formula1 = string.Format("\"{0}\"", DataSource);
+                //}
             }
 
             this.Formula2 = string.Empty;

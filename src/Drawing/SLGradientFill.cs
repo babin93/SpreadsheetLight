@@ -7,6 +7,7 @@ namespace SpreadsheetLight.Drawing
     internal class SLGradientFill
     {
         internal List<System.Drawing.Color> listThemeColors;
+        internal bool ThrowExceptionsIfAny { get; set; }
 
         internal bool IsLinear = true;
         private decimal decAngle;
@@ -53,7 +54,7 @@ namespace SpreadsheetLight.Drawing
 
         internal List<SLGradientStop> GradientStops { get; set; }
 
-        internal SLGradientFill(List<System.Drawing.Color> ThemeColors)
+        internal SLGradientFill(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             int i;
             this.listThemeColors = new List<System.Drawing.Color>();
@@ -61,6 +62,8 @@ namespace SpreadsheetLight.Drawing
             {
                 this.listThemeColors.Add(ThemeColors[i]);
             }
+
+            this.ThrowExceptionsIfAny = ThrowExceptionsIfAny;
 
             this.IsLinear = true;
             this.Angle = 0;
@@ -130,196 +133,196 @@ namespace SpreadsheetLight.Drawing
             switch (PresetType)
             {
                 case SLGradientPresetValues.EarlySunset:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "66008F", 30));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "BA0066", 64.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF0000", 89.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF8200", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "66008F", 30, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "BA0066", 64.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF0000", 89.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF8200", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.LateSunset:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000000", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000040", 20));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "400040", 50));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "8F0040", 75));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F27300", 89.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFBF00", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000000", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000040", 20, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "400040", 50, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "8F0040", 75, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F27300", 89.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFBF00", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Nightfall:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000000", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0A128C", 39.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "181CC7", 70));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "7005D4", 88));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "8C3D91", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000000", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0A128C", 39.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "181CC7", 70, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "7005D4", 88, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "8C3D91", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Daybreak:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "5E9EFF", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "85C2FF", 39.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C4D6EB", 70));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFEBFA", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "5E9EFF", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "85C2FF", 39.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C4D6EB", 70, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFEBFA", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Horizon:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "DCEBF5", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "83A7C3", 8));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "768FB9", 13));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "83A7C3", 21.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 52));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "9C6563", 56));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "80302D", 58));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C0524E", 71.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "EBDAD4", 94));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "55261C", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "DCEBF5", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "83A7C3", 8, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "768FB9", 13, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "83A7C3", 21.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 52, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "9C6563", 56, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "80302D", 58, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C0524E", 71.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "EBDAD4", 94, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "55261C", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Desert:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FC9FCB", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F8B049", 13));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F8B049", 21.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FEE7F2", 63));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F952A0", 67));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C50849", 69));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "B43E85", 82.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F8B049", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FC9FCB", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F8B049", 13, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F8B049", 21.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FEE7F2", 63, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F952A0", 67, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C50849", 69, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "B43E85", 82.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F8B049", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Ocean:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "03D4A8", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "21D6E0", 25));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0087E6", 75));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "005CBF", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "03D4A8", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "21D6E0", 25, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0087E6", 75, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "005CBF", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.CalmWater:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CCCCFF", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "99CCFF", 17.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "9966FF", 36));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CC99FF", 61));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "99CCFF", 82.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CCCCFF", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CCCCFF", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "99CCFF", 17.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "9966FF", 36, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CC99FF", 61, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "99CCFF", 82.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CCCCFF", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Fire:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFF200", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF7A00", 45));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF0300", 70));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "4D0808", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFF200", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF7A00", 45, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF0300", 70, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "4D0808", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Fog:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "8488C4", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D4DEFF", 53));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D4DEFF", 83));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "96AB94", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "8488C4", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D4DEFF", 53, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D4DEFF", 83, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "96AB94", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Moss:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "DDEBCF", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "9CB86E", 50));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "156B13", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "DDEBCF", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "9CB86E", 50, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "156B13", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Peacock:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "3399FF", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "00CCCC", 16));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "9999FF", 47));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "2E6792", 60.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "3333CC", 71.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "1170FF", 81));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "006699", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "3399FF", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "00CCCC", 16, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "9999FF", 47, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "2E6792", 60.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "3333CC", 71.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "1170FF", 81, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "006699", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Wheat:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBEAC7", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FEE7F2", 17.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FAC77D", 36));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBA97D", 61));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBD49C", 82.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FEE7F2", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBEAC7", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FEE7F2", 17.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FAC77D", 36, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBA97D", 61, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBD49C", 82.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FEE7F2", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Parchment:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFEFD1", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F0EBD5", 64.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D1C39F", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFEFD1", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "F0EBD5", 64.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D1C39F", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Mahogany:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D6B19C", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D49E6C", 30));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "A65528", 70));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "663012", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D6B19C", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "D49E6C", 30, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "A65528", 70, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "663012", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Rainbow:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "A603AB", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0819FB", 21.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "1A8D48", 35.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFF00", 52));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "EE3F17", 73));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E81766", 88));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "A603AB", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "A603AB", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0819FB", 21.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "1A8D48", 35.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFF00", 52, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "EE3F17", 73, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E81766", 88, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "A603AB", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Rainbow2:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF3399", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF6633", 25));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFF00", 50));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "01A78F", 75));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "3366FF", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF3399", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FF6633", 25, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFF00", 50, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "01A78F", 75, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "3366FF", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Gold:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6DCAC", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6D78A", 12));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C7AC4C", 30));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6D78A", 45));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C7AC4C", 77));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6DCAC", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6DCAC", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6D78A", 12, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C7AC4C", 30, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6D78A", 45, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "C7AC4C", 77, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6DCAC", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Gold2:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBE4AE", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "BD922A", 13));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "BD922A", 21.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBE4AE", 63));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "BD922A", 67));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "835E17", 69));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "A28949", 82.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FAE3B7", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBE4AE", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "BD922A", 13, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "BD922A", 21.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FBE4AE", 63, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "BD922A", 67, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "835E17", 69, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "A28949", 82.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FAE3B7", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Brass:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "825600", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFA800", 13));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "825600", 28));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFA800", 42.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "825600", 58));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFA800", 72));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "825600", 87));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFA800", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "825600", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFA800", 13, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "825600", 28, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFA800", 42.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "825600", 58, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFA800", 72, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "825600", 87, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFA800", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Chrome:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "1F1F1F", 16));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 17.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "636363", 42));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CFCFCF", 53));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CFCFCF", 66));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "1F1F1F", 75.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 78.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "7F7F7F", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "1F1F1F", 16, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 17.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "636363", 42, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CFCFCF", 53, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CFCFCF", 66, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "1F1F1F", 75.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 78.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "7F7F7F", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Chrome2:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CBCBCB", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "5F5F5F", 13));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "5F5F5F", 21.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 63));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "B2B2B2", 67));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "292929", 69));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "777777", 82.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "EAEAEA", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "CBCBCB", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "5F5F5F", 13, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "5F5F5F", 21.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 63, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "B2B2B2", 67, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "292929", 69, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "777777", 82.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "EAEAEA", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Silver:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6E6E6", 7.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "7D8496", 32.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6E6E6", 47));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "7D8496", 85.001m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6E6E6", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "FFFFFF", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6E6E6", 7.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "7D8496", 32.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6E6E6", 47, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "7D8496", 85.001m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "E6E6E6", 100, this.ThrowExceptionsIfAny));
                     break;
                 case SLGradientPresetValues.Sapphire:
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 0));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0047FF", 13));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 28));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0047FF", 42.999m));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 58));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0047FF", 72));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 87));
-                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0047FF", 100));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 0, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0047FF", 13, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 28, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0047FF", 42.999m, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 58, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0047FF", 72, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "000082", 87, this.ThrowExceptionsIfAny));
+                    this.GradientStops.Add(new SLGradientStop(this.listThemeColors, "0047FF", 100, this.ThrowExceptionsIfAny));
                     break;
             }
         }
@@ -402,7 +405,7 @@ namespace SpreadsheetLight.Drawing
 
         internal SLGradientFill Clone()
         {
-            SLGradientFill gf = new SLGradientFill(this.listThemeColors);
+            SLGradientFill gf = new SLGradientFill(this.listThemeColors, this.ThrowExceptionsIfAny);
             gf.IsLinear = this.IsLinear;
             gf.decAngle = this.decAngle;
             gf.PathType = this.PathType;

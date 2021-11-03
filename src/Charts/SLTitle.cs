@@ -64,13 +64,13 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLA.SLFormat3D Format3D { get { return this.ShapeProperties.Format3D; } }
 
-        internal SLTitle(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLTitle(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             // just put in the theme colors, even though it's probably not needed.
             // Memory optimisations? Take it out.
             this.rst = new SLRstType(SLConstants.OfficeThemeMajorLatinFont, SLConstants.OfficeThemeMinorLatinFont, ThemeColors, new List<System.Drawing.Color>());
             this.Overlay = false;
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
 
             if (IsStylish)
             {
@@ -86,7 +86,7 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
         /// <summary>
@@ -107,7 +107,7 @@ namespace SpreadsheetLight.Charts
             this.rst = RichText.Clone();
         }
 
-        internal C.Title ToTitle(bool IsStylish = false)
+        internal C.Title ToTitle(bool IsStylish)
         {
             C.Title t = new C.Title();
 
@@ -140,7 +140,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLTitle Clone()
         {
-            SLTitle t = new SLTitle(this.ShapeProperties.listThemeColors);
+            SLTitle t = new SLTitle(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             t.Rotation = this.Rotation;
             t.Vertical = this.Vertical;
             t.Anchor = this.Anchor;

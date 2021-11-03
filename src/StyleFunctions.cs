@@ -58,10 +58,9 @@ namespace SpreadsheetLight
             SLStyle style = new SLStyle(SimpleTheme.MajorLatinFont, SimpleTheme.MinorLatinFont, SimpleTheme.listThemeColors, SimpleTheme.listIndexedColors);
             if (SLTool.CheckRowColumnIndexLimit(RowIndex, ColumnIndex))
             {
-                SLCellPoint pt = new SLCellPoint(RowIndex, ColumnIndex);
-                if (slws.Cells.ContainsKey(pt))
+                if (slws.CellWarehouse.Exists(RowIndex, ColumnIndex))
                 {
-                    SLCell c = slws.Cells[pt];
+                    SLCell c = slws.CellWarehouse.Cells[RowIndex][ColumnIndex];
                     bFound = true;
                     style.FromHash(listStyle[(int)c.StyleIndex]);
                 }
@@ -173,7 +172,6 @@ namespace SpreadsheetLight
                 // original style index, new style index
                 Dictionary<uint, uint> stylecache = new Dictionary<uint, uint>();
 
-                SLCellPoint pt;
                 SLCell c;
                 uint iCacheStyleIndex;
                 SLStyle cellstyle = new SLStyle(SimpleTheme.MajorLatinFont, SimpleTheme.MinorLatinFont, SimpleTheme.listThemeColors, SimpleTheme.listIndexedColors);
@@ -185,10 +183,9 @@ namespace SpreadsheetLight
                 {
                     for (j = iStartColumnIndex; j <= iEndColumnIndex; ++j)
                     {
-                        pt = new SLCellPoint(i, j);
-                        if (slws.Cells.ContainsKey(pt))
+                        if (slws.CellWarehouse.Exists(i, j))
                         {
-                            c = slws.Cells[pt];
+                            c = slws.CellWarehouse.Cells[i][j];
                             iCacheStyleIndex = c.StyleIndex;
                             if (stylecache.ContainsKey(iCacheStyleIndex))
                             {
@@ -201,13 +198,13 @@ namespace SpreadsheetLight
                                 c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
                                 stylecache[iCacheStyleIndex] = c.StyleIndex;
                             }
-                            slws.Cells[pt] = c.Clone();
+                            slws.CellWarehouse.SetValue(i, j, c);
                         }
                         else
                         {
-                            if (slws.RowProperties.ContainsKey(pt.RowIndex))
+                            if (slws.RowProperties.ContainsKey(i))
                             {
-                                rp = slws.RowProperties[pt.RowIndex];
+                                rp = slws.RowProperties[i];
                                 iCacheStyleIndex = rp.StyleIndex;
 
                                 c = new SLCell();
@@ -223,11 +220,11 @@ namespace SpreadsheetLight
                                     c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
                                     stylecache[iCacheStyleIndex] = c.StyleIndex;
                                 }
-                                slws.Cells[pt] = c.Clone();
+                                slws.CellWarehouse.SetValue(i, j, c);
                             }
-                            else if (slws.ColumnProperties.ContainsKey(pt.ColumnIndex))
+                            else if (slws.ColumnProperties.ContainsKey(j))
                             {
-                                cp = slws.ColumnProperties[pt.ColumnIndex];
+                                cp = slws.ColumnProperties[j];
                                 iCacheStyleIndex = cp.StyleIndex;
 
                                 c = new SLCell();
@@ -243,18 +240,18 @@ namespace SpreadsheetLight
                                     c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
                                     stylecache[iCacheStyleIndex] = c.StyleIndex;
                                 }
-                                slws.Cells[pt] = c.Clone();
+                                slws.CellWarehouse.SetValue(i, j, c);
                             }
                             else
                             {
-                                // it's a completely empty cell, so if it's the default style,
+                                // it's a completely empty cell, so if it's the default style (meaning 0),
                                 // there's really no point in creating a new SLCell.
                                 if (iStyleIndex > 0)
                                 {
                                     c = new SLCell();
                                     c.CellText = string.Empty;
                                     c.StyleIndex = (uint)iStyleIndex;
-                                    slws.Cells[pt] = c.Clone();
+                                    slws.CellWarehouse.SetValue(i, j, c);
                                 }
                             }
                         }
@@ -339,7 +336,6 @@ namespace SpreadsheetLight
                 iEndColumnIndex = StartColumnIndex;
             }
 
-            SLCellPoint pt;
             SLCell c;
             int i, j;
 
@@ -347,12 +343,11 @@ namespace SpreadsheetLight
             {
                 for (j = iStartColumnIndex; j <= iEndColumnIndex; ++j)
                 {
-                    pt = new SLCellPoint(i, j);
-                    if (slws.Cells.ContainsKey(pt))
+                    if (slws.CellWarehouse.Exists(i, j))
                     {
-                        c = slws.Cells[pt];
+                        c = slws.CellWarehouse.Cells[i][j];
                         c.StyleIndex = 0;
-                        slws.Cells[pt] = c;
+                        slws.CellWarehouse.SetValue(i, j, c);
                     }
                 }
             }
@@ -645,42 +640,45 @@ namespace SpreadsheetLight
                 // original style index, new style index
                 Dictionary<uint, uint> stylecache = new Dictionary<uint, uint>();
 
-                List<SLCellPoint> listCellKeys = slws.Cells.Keys.ToList<SLCellPoint>();
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                List<int> listColumnKeys;
                 SLCell c;
                 uint iCacheStyleIndex;
                 SLStyle cellstyle = new SLStyle(SimpleTheme.MajorLatinFont, SimpleTheme.MinorLatinFont, SimpleTheme.listThemeColors, SimpleTheme.listIndexedColors);
-                foreach (SLCellPoint pt in listCellKeys)
+                foreach (int rowkey in listRowKeys)
                 {
-                    if (iStartRowIndex <= pt.RowIndex && pt.RowIndex <= iEndRowIndex)
+                    if (iStartRowIndex <= rowkey && rowkey <= iEndRowIndex)
                     {
-                        c = slws.Cells[pt];
-                        iCacheStyleIndex = c.StyleIndex;
-                        if (stylecache.ContainsKey(iCacheStyleIndex))
+                        listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                        foreach (int colkey in listColumnKeys)
                         {
-                            c.StyleIndex = stylecache[iCacheStyleIndex];
+                            c = slws.CellWarehouse.Cells[rowkey][colkey];
+                            iCacheStyleIndex = c.StyleIndex;
+                            if (stylecache.ContainsKey(iCacheStyleIndex))
+                            {
+                                c.StyleIndex = stylecache[iCacheStyleIndex];
+                            }
+                            else
+                            {
+                                cellstyle.FromHash(listStyle[(int)iCacheStyleIndex]);
+                                cellstyle.MergeStyle(RowStyle);
+                                c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
+                                stylecache[iCacheStyleIndex] = c.StyleIndex;
+                            }
+                            slws.CellWarehouse.SetValue(rowkey, colkey, c);
                         }
-                        else
-                        {
-                            cellstyle.FromHash(listStyle[(int)iCacheStyleIndex]);
-                            cellstyle.MergeStyle(RowStyle);
-                            c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
-                            stylecache[iCacheStyleIndex] = c.StyleIndex;
-                        }
-                        slws.Cells[pt] = c.Clone();
                     }
                 }
 
                 List<int> colindexkeys = slws.ColumnProperties.Keys.ToList<int>();
                 SLColumnProperties cp;
-                SLCellPoint intersectionpt;
                 foreach (int colindex in colindexkeys)
                 {
                     cp = slws.ColumnProperties[colindex];
                     iCacheStyleIndex = cp.StyleIndex;
                     for (i = iStartRowIndex; i <= iEndRowIndex; ++i)
                     {
-                        intersectionpt = new SLCellPoint(i, colindex);
-                        if (!slws.Cells.ContainsKey(intersectionpt))
+                        if (!slws.CellWarehouse.Exists(i, colindex))
                         {
                             c = new SLCell();
                             c.CellText = string.Empty;
@@ -695,13 +693,647 @@ namespace SpreadsheetLight
                                 c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
                                 stylecache[iCacheStyleIndex] = c.StyleIndex;
                             }
-                            slws.Cells[intersectionpt] = c.Clone();
+                            slws.CellWarehouse.SetValue(i, colindex, c);
                         }
                     }
                 }
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        public void DrawBorderGrid(string StartCellReference, string EndCellReference, BorderStyleValues BorderStyle)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, b, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border color.</param>
+        public void DrawBorderGrid(string StartCellReference, string EndCellReference, BorderStyleValues BorderStyle, System.Drawing.Color BorderColor)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.Color = BorderColor;
+            b.BottomBorder.Color = BorderColor;
+            b.LeftBorder.Color = BorderColor;
+            b.RightBorder.Color = BorderColor;
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, b, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border theme color.</param>
+        public void DrawBorderGrid(string StartCellReference, string EndCellReference, BorderStyleValues BorderStyle, SLThemeColorIndexValues BorderColor)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.SetBorderThemeColor(BorderColor);
+            b.BottomBorder.SetBorderThemeColor(BorderColor);
+            b.LeftBorder.SetBorderThemeColor(BorderColor);
+            b.RightBorder.SetBorderThemeColor(BorderColor);
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, b, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border theme color.</param>
+        /// <param name="Tint">The tint applied to the theme color, ranging from -1.0 to 1.0. Negative tints darken the theme color and positive tints lighten the theme color.</param>
+        public void DrawBorderGrid(string StartCellReference, string EndCellReference, BorderStyleValues BorderStyle, SLThemeColorIndexValues BorderColor, double Tint)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.BottomBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.LeftBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.RightBorder.SetBorderThemeColor(BorderColor, Tint);
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, b, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="Border">The SLBorder object with border style properties.</param>
+        public void DrawBorderGrid(string StartCellReference, string EndCellReference, SLBorder Border)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, Border, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        public void DrawBorderGrid(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, BorderStyleValues BorderStyle)
+        {
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, b, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border color.</param>
+        public void DrawBorderGrid(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, BorderStyleValues BorderStyle, System.Drawing.Color BorderColor)
+        {
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.Color = BorderColor;
+            b.BottomBorder.Color = BorderColor;
+            b.LeftBorder.Color = BorderColor;
+            b.RightBorder.Color = BorderColor;
+
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, b, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border theme color.</param>
+        public void DrawBorderGrid(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, BorderStyleValues BorderStyle, SLThemeColorIndexValues BorderColor)
+        {
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.SetBorderThemeColor(BorderColor);
+            b.BottomBorder.SetBorderThemeColor(BorderColor);
+            b.LeftBorder.SetBorderThemeColor(BorderColor);
+            b.RightBorder.SetBorderThemeColor(BorderColor);
+
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, b, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border theme color.</param>
+        /// <param name="Tint">The tint applied to the theme color, ranging from -1.0 to 1.0. Negative tints darken the theme color and positive tints lighten the theme color.</param>
+        public void DrawBorderGrid(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, BorderStyleValues BorderStyle, SLThemeColorIndexValues BorderColor, double Tint)
+        {
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.BottomBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.LeftBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.RightBorder.SetBorderThemeColor(BorderColor, Tint);
+
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, b, true);
+        }
+
+        /// <summary>
+        /// Draw border grid.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="Border">The SLBorder object with border style properties.</param>
+        public void DrawBorderGrid(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, SLBorder Border)
+        {
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, Border, true);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        public void DrawBorder(string StartCellReference, string EndCellReference, BorderStyleValues BorderStyle)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, b, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border color.</param>
+        public void DrawBorder(string StartCellReference, string EndCellReference, BorderStyleValues BorderStyle, System.Drawing.Color BorderColor)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.Color = BorderColor;
+            b.BottomBorder.Color = BorderColor;
+            b.LeftBorder.Color = BorderColor;
+            b.RightBorder.Color = BorderColor;
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, b, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border theme color.</param>
+        public void DrawBorder(string StartCellReference, string EndCellReference, BorderStyleValues BorderStyle, SLThemeColorIndexValues BorderColor)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.SetBorderThemeColor(BorderColor);
+            b.BottomBorder.SetBorderThemeColor(BorderColor);
+            b.LeftBorder.SetBorderThemeColor(BorderColor);
+            b.RightBorder.SetBorderThemeColor(BorderColor);
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, b, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border theme color.</param>
+        /// <param name="Tint">The tint applied to the theme color, ranging from -1.0 to 1.0. Negative tints darken the theme color and positive tints lighten the theme color.</param>
+        public void DrawBorder(string StartCellReference, string EndCellReference, BorderStyleValues BorderStyle, SLThemeColorIndexValues BorderColor, double Tint)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.BottomBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.LeftBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.RightBorder.SetBorderThemeColor(BorderColor, Tint);
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, b, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartCellReference">The cell reference of the start cell of the cell range, such as "A1". This is typically the top-left cell.</param>
+        /// <param name="EndCellReference">The cell reference of the end cell of the cell range, such as "A1". This is typically the bottom-right cell.</param>
+        /// <param name="Border">The SLBorder object with border style properties.</param>
+        public void DrawBorder(string StartCellReference, string EndCellReference, SLBorder Border)
+        {
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex)
+                || !SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+            {
+                return;
+            }
+
+            DrawBorderFinal(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex, Border, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        public void DrawBorder(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, BorderStyleValues BorderStyle)
+        {
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, b, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border color.</param>
+        public void DrawBorder(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, BorderStyleValues BorderStyle, System.Drawing.Color BorderColor)
+        {
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.Color = BorderColor;
+            b.BottomBorder.Color = BorderColor;
+            b.LeftBorder.Color = BorderColor;
+            b.RightBorder.Color = BorderColor;
+
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, b, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border theme color.</param>
+        public void DrawBorder(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, BorderStyleValues BorderStyle, SLThemeColorIndexValues BorderColor)
+        {
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.SetBorderThemeColor(BorderColor);
+            b.BottomBorder.SetBorderThemeColor(BorderColor);
+            b.LeftBorder.SetBorderThemeColor(BorderColor);
+            b.RightBorder.SetBorderThemeColor(BorderColor);
+
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, b, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="BorderStyle">The border style. Default is none.</param>
+        /// <param name="BorderColor">The border theme color.</param>
+        /// <param name="Tint">The tint applied to the theme color, ranging from -1.0 to 1.0. Negative tints darken the theme color and positive tints lighten the theme color.</param>
+        public void DrawBorder(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, BorderStyleValues BorderStyle, SLThemeColorIndexValues BorderColor, double Tint)
+        {
+            SLBorder b = this.CreateBorder();
+            b.TopBorder.BorderStyle = BorderStyle;
+            b.BottomBorder.BorderStyle = BorderStyle;
+            b.LeftBorder.BorderStyle = BorderStyle;
+            b.RightBorder.BorderStyle = BorderStyle;
+
+            b.TopBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.BottomBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.LeftBorder.SetBorderThemeColor(BorderColor, Tint);
+            b.RightBorder.SetBorderThemeColor(BorderColor, Tint);
+
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, b, false);
+        }
+
+        /// <summary>
+        /// Draw border.
+        /// </summary>
+        /// <param name="StartRowIndex">The row index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="StartColumnIndex">The column index of the start cell of the cell range. This is typically the top-left cell.</param>
+        /// <param name="EndRowIndex">The row index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="EndColumnIndex">The column index of the end cell of the cell range. This is typically the bottom-right cell.</param>
+        /// <param name="Border">The SLBorder object with border style properties.</param>
+        public void DrawBorder(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, SLBorder Border)
+        {
+            DrawBorderFinal(StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, Border, false);
+        }
+
+        private void DrawBorderFinal(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex, SLBorder Border, bool DrawBorderGrid)
+        {
+            int iStartRowIndex = 1, iEndRowIndex = 1, iStartColumnIndex = 1, iEndColumnIndex = 1;
+            if (StartRowIndex < EndRowIndex)
+            {
+                iStartRowIndex = StartRowIndex;
+                iEndRowIndex = EndRowIndex;
+            }
+            else
+            {
+                iStartRowIndex = EndRowIndex;
+                iEndRowIndex = StartRowIndex;
+            }
+
+            if (StartColumnIndex < EndColumnIndex)
+            {
+                iStartColumnIndex = StartColumnIndex;
+                iEndColumnIndex = EndColumnIndex;
+            }
+            else
+            {
+                iStartColumnIndex = EndColumnIndex;
+                iEndColumnIndex = StartColumnIndex;
+            }
+
+            if (iStartRowIndex >= 1 && iStartRowIndex <= SLConstants.RowLimit
+                && iEndRowIndex >= 1 && iEndRowIndex <= SLConstants.RowLimit
+                && iStartColumnIndex >= 1 && iStartColumnIndex <= SLConstants.ColumnLimit
+                && iEndColumnIndex >= 1 && iEndColumnIndex <= SLConstants.ColumnLimit)
+            {
+                SLStyle style;
+                int i, j;
+                for (i = iStartRowIndex; i <= iEndRowIndex; ++i)
+                {
+                    for (j = iStartColumnIndex; j <= iEndColumnIndex; ++j)
+                    {
+                        style = this.GetCellStyle(i, j);
+
+                        if (DrawBorderGrid)
+                        {
+                            style.borderReal.bpTopBorder = Border.bpTopBorder.Clone();
+                            style.borderReal.bpBottomBorder = Border.bpBottomBorder.Clone();
+                            style.borderReal.bpLeftBorder = Border.bpLeftBorder.Clone();
+                            style.borderReal.bpRightBorder = Border.bpRightBorder.Clone();
+                        }
+                        else
+                        {
+                            if (i == iStartRowIndex)
+                            {
+                                style.borderReal.bpTopBorder = Border.bpTopBorder.Clone();
+                            }
+                            if (i == iEndRowIndex)
+                            {
+                                style.borderReal.bpBottomBorder = Border.bpBottomBorder.Clone();
+                            }
+                            if (j == iStartColumnIndex)
+                            {
+                                style.borderReal.bpLeftBorder = Border.bpLeftBorder.Clone();
+                            }
+                            if (j == iEndColumnIndex)
+                            {
+                                style.borderReal.bpRightBorder = Border.bpRightBorder.Clone();
+                            }
+                        }
+
+                        this.SetCellStyle(i, j, style);
+                    }
+                }
+
+                int iOuterTopRowIndex = iStartRowIndex - 1;
+                int iOuterBottomRowIndex = iEndRowIndex + 1;
+                int iOuterLeftColumnIndex = iStartColumnIndex - 1;
+                int iOuterRightColumnIndex = iEndColumnIndex + 1;
+
+                // set the bottom of the outer top row using the style of the top border
+                // because the bottom of the outer top must be the same as the top of
+                // the inner box.
+                if (iOuterTopRowIndex >= 1)
+                {
+                    for (j = iStartColumnIndex; j <= iEndColumnIndex; ++j)
+                    {
+                        style = this.GetCellStyle(iOuterTopRowIndex, j);
+                        style.borderReal.bpBottomBorder = Border.bpTopBorder.Clone();
+                        this.SetCellStyle(iOuterTopRowIndex, j, style);
+                    }
+                }
+
+                // similarly for outer bottom
+                if (iOuterBottomRowIndex <= SLConstants.RowLimit)
+                {
+                    for (j = iStartColumnIndex; j <= iEndColumnIndex; ++j)
+                    {
+                        style = this.GetCellStyle(iOuterBottomRowIndex, j);
+                        style.borderReal.bpTopBorder = Border.bpBottomBorder.Clone();
+                        this.SetCellStyle(iOuterBottomRowIndex, j, style);
+                    }
+                }
+
+                // similarly for outer left
+                if (iOuterLeftColumnIndex >= 1)
+                {
+                    for (i = iStartRowIndex; i <= iEndRowIndex; ++i)
+                    {
+                        style = this.GetCellStyle(i, iOuterLeftColumnIndex);
+                        style.borderReal.bpRightBorder = Border.bpLeftBorder.Clone();
+                        this.SetCellStyle(i, iOuterLeftColumnIndex, style);
+                    }
+                }
+
+                // similarly for outer right
+                if (iOuterRightColumnIndex <= SLConstants.ColumnLimit)
+                {
+                    for (i = iStartRowIndex; i <= iEndRowIndex; ++i)
+                    {
+                        style = this.GetCellStyle(i, iOuterRightColumnIndex);
+                        style.borderReal.bpLeftBorder = Border.bpRightBorder.Clone();
+                        this.SetCellStyle(i, iOuterRightColumnIndex, style);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -830,28 +1462,33 @@ namespace SpreadsheetLight
                 // original style index, new style index
                 Dictionary<uint, uint> stylecache = new Dictionary<uint, uint>();
 
-                List<SLCellPoint> listCellKeys = slws.Cells.Keys.ToList<SLCellPoint>();
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                List<int> listColumnKeys;
                 SLCell c;
                 uint iCacheStyleIndex;
                 SLStyle cellstyle = new SLStyle(SimpleTheme.MajorLatinFont, SimpleTheme.MinorLatinFont, SimpleTheme.listThemeColors, SimpleTheme.listIndexedColors);
-                foreach (SLCellPoint pt in listCellKeys)
+                foreach (int rowkey in listRowKeys)
                 {
-                    if (iStartColumnIndex <= pt.ColumnIndex && pt.ColumnIndex <= iEndColumnIndex)
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
                     {
-                        c = slws.Cells[pt];
-                        iCacheStyleIndex = c.StyleIndex;
-                        if (stylecache.ContainsKey(iCacheStyleIndex))
+                        if (iStartColumnIndex <= colkey && colkey <= iEndColumnIndex)
                         {
-                            c.StyleIndex = stylecache[iCacheStyleIndex];
+                            c = slws.CellWarehouse.Cells[rowkey][colkey];
+                            iCacheStyleIndex = c.StyleIndex;
+                            if (stylecache.ContainsKey(iCacheStyleIndex))
+                            {
+                                c.StyleIndex = stylecache[iCacheStyleIndex];
+                            }
+                            else
+                            {
+                                cellstyle.FromHash(listStyle[(int)iCacheStyleIndex]);
+                                cellstyle.MergeStyle(ColumnStyle);
+                                c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
+                                stylecache[iCacheStyleIndex] = c.StyleIndex;
+                            }
+                            slws.CellWarehouse.SetValue(rowkey, colkey, c);
                         }
-                        else
-                        {
-                            cellstyle.FromHash(listStyle[(int)iCacheStyleIndex]);
-                            cellstyle.MergeStyle(ColumnStyle);
-                            c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
-                            stylecache[iCacheStyleIndex] = c.StyleIndex;
-                        }
-                        slws.Cells[pt] = c.Clone();
                     }
                 }
 
@@ -865,7 +1502,7 @@ namespace SpreadsheetLight
                     for (i = iStartColumnIndex; i <= iEndColumnIndex; ++i)
                     {
                         intersectionpt = new SLCellPoint(rowindex, i);
-                        if (!slws.Cells.ContainsKey(intersectionpt))
+                        if (!slws.CellWarehouse.Exists(rowindex, i))
                         {
                             c = new SLCell();
                             c.CellText = string.Empty;
@@ -880,7 +1517,7 @@ namespace SpreadsheetLight
                                 c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
                                 stylecache[iCacheStyleIndex] = c.StyleIndex;
                             }
-                            slws.Cells[intersectionpt] = c.Clone();
+                            slws.CellWarehouse.SetValue(rowindex, i, c);
                         }
                     }
                 }
@@ -1035,10 +1672,9 @@ namespace SpreadsheetLight
                 result = true;
 
                 uint iStyleIndex = 0;
-                SLCellPoint pt = new SLCellPoint(FromRowIndex, FromColumnIndex);
-                if (slws.Cells.ContainsKey(pt))
+                if (slws.CellWarehouse.Exists(FromRowIndex, FromColumnIndex))
                 {
-                    iStyleIndex = slws.Cells[pt].StyleIndex;
+                    iStyleIndex = slws.CellWarehouse.Cells[FromRowIndex][FromColumnIndex].StyleIndex;
                 }
                 else
                 {
@@ -1061,12 +1697,14 @@ namespace SpreadsheetLight
                 {
                     for (int j = iStartColumnIndex; j <= iEndColumnIndex; ++j)
                     {
-                        if (i != FromRowIndex && j != FromColumnIndex)
+                        // 29 Oct 2016: changed from && to ||
+                        // Implemented De Morgan's law wrongly...
+                        // Thanks to Christian Z for pointing this out!
+                        if (i != FromRowIndex || j != FromColumnIndex)
                         {
-                            pt = new SLCellPoint(i, j);
-                            if (slws.Cells.ContainsKey(pt))
+                            if (slws.CellWarehouse.Exists(i, j))
                             {
-                                slws.Cells[pt].StyleIndex = iStyleIndex;
+                                slws.CellWarehouse.Cells[i][j].StyleIndex = iStyleIndex;
                             }
                             else
                             {
@@ -1079,7 +1717,7 @@ namespace SpreadsheetLight
                                     c = new SLCell();
                                     c.CellText = string.Empty;
                                     c.StyleIndex = iStyleIndex;
-                                    slws.Cells[pt] = c;
+                                    slws.CellWarehouse.SetValue(i, j, c);
                                 }
                             }
                         }
@@ -1167,26 +1805,31 @@ namespace SpreadsheetLight
                 rowstyle.FromHash(listStyle[(int)iStyleIndex]);
 
                 SLStyle cellstyle = new SLStyle(SimpleTheme.MajorLatinFont, SimpleTheme.MinorLatinFont, SimpleTheme.listThemeColors, SimpleTheme.listIndexedColors);
-                List<SLCellPoint> listcellkeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                foreach (SLCellPoint pt in listcellkeys)
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                List<int> listColumnKeys;
+                foreach (int rowkey in listRowKeys)
                 {
-                    if (iStartRowIndex <= pt.RowIndex && pt.RowIndex <= iEndRowIndex
-                        && pt.RowIndex != FromRowIndex)
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
                     {
-                        c = slws.Cells[pt];
-                        iCacheStyleIndex = c.StyleIndex;
-                        if (stylecache.ContainsKey(iCacheStyleIndex))
+                        if (iStartRowIndex <= rowkey && rowkey <= iEndRowIndex
+                        && rowkey != FromRowIndex)
                         {
-                            c.StyleIndex = stylecache[iCacheStyleIndex];
+                            c = slws.CellWarehouse.Cells[rowkey][colkey];
+                            iCacheStyleIndex = c.StyleIndex;
+                            if (stylecache.ContainsKey(iCacheStyleIndex))
+                            {
+                                c.StyleIndex = stylecache[iCacheStyleIndex];
+                            }
+                            else
+                            {
+                                cellstyle.FromHash(listStyle[(int)c.StyleIndex]);
+                                cellstyle.MergeStyle(rowstyle);
+                                c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
+                                stylecache[iCacheStyleIndex] = c.StyleIndex;
+                            }
+                            slws.CellWarehouse.SetValue(rowkey, colkey, c);
                         }
-                        else
-                        {
-                            cellstyle.FromHash(listStyle[(int)c.StyleIndex]);
-                            cellstyle.MergeStyle(rowstyle);
-                            c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
-                            stylecache[iCacheStyleIndex] = c.StyleIndex;
-                        }
-                        slws.Cells[pt] = c.Clone();
                     }
                 }
 
@@ -1202,7 +1845,7 @@ namespace SpreadsheetLight
                     for (i = iStartRowIndex; i <= iEndRowIndex; ++i)
                     {
                         intersectionpt = new SLCellPoint(i, colindex);
-                        if (!slws.Cells.ContainsKey(intersectionpt))
+                        if (!slws.CellWarehouse.Exists(i, colindex))
                         {
                             c = new SLCell();
                             c.CellText = string.Empty;
@@ -1217,7 +1860,7 @@ namespace SpreadsheetLight
                                 c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
                                 stylecache[iCacheStyleIndex] = c.StyleIndex;
                             }
-                            slws.Cells[intersectionpt] = c.Clone();
+                            slws.CellWarehouse.SetValue(i, colindex, c);
                         }
                     }
                 }
@@ -1305,26 +1948,31 @@ namespace SpreadsheetLight
                 colstyle.FromHash(listStyle[(int)iStyleIndex]);
 
                 SLStyle cellstyle = new SLStyle(SimpleTheme.MajorLatinFont, SimpleTheme.MinorLatinFont, SimpleTheme.listThemeColors, SimpleTheme.listIndexedColors);
-                List<SLCellPoint> listcellkeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                foreach (SLCellPoint pt in listcellkeys)
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                List<int> listColumnKeys;
+                foreach (int rowkey in listRowKeys)
                 {
-                    if (iStartColumnIndex <= pt.ColumnIndex && pt.ColumnIndex <= iEndColumnIndex
-                        && pt.ColumnIndex != FromColumnIndex)
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
                     {
-                        c = slws.Cells[pt];
-                        iCacheStyleIndex = c.StyleIndex;
-                        if (stylecache.ContainsKey(iCacheStyleIndex))
+                        if (iStartColumnIndex <= colkey && colkey <= iEndColumnIndex
+                        && colkey != FromColumnIndex)
                         {
-                            c.StyleIndex = stylecache[iCacheStyleIndex];
+                            c = slws.CellWarehouse.Cells[rowkey][colkey];
+                            iCacheStyleIndex = c.StyleIndex;
+                            if (stylecache.ContainsKey(iCacheStyleIndex))
+                            {
+                                c.StyleIndex = stylecache[iCacheStyleIndex];
+                            }
+                            else
+                            {
+                                cellstyle.FromHash(listStyle[(int)c.StyleIndex]);
+                                cellstyle.MergeStyle(colstyle);
+                                c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
+                                stylecache[iCacheStyleIndex] = c.StyleIndex;
+                            }
+                            slws.CellWarehouse.SetValue(rowkey, colkey, c);
                         }
-                        else
-                        {
-                            cellstyle.FromHash(listStyle[(int)c.StyleIndex]);
-                            cellstyle.MergeStyle(colstyle);
-                            c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
-                            stylecache[iCacheStyleIndex] = c.StyleIndex;
-                        }
-                        slws.Cells[pt] = c.Clone();
                     }
                 }
 
@@ -1332,15 +1980,13 @@ namespace SpreadsheetLight
                 // See appropriate function and make sure to sync with that function.
                 List<int> rowindexkeys = slws.RowProperties.Keys.ToList<int>();
                 SLRowProperties rp;
-                SLCellPoint intersectionpt;
                 foreach (int rowindex in rowindexkeys)
                 {
                     rp = slws.RowProperties[rowindex];
                     iCacheStyleIndex = rp.StyleIndex;
                     for (i = iStartColumnIndex; i <= iEndColumnIndex; ++i)
                     {
-                        intersectionpt = new SLCellPoint(rowindex, i);
-                        if (!slws.Cells.ContainsKey(intersectionpt))
+                        if (!slws.CellWarehouse.Exists(rowindex, i))
                         {
                             c = new SLCell();
                             c.CellText = string.Empty;
@@ -1355,7 +2001,7 @@ namespace SpreadsheetLight
                                 c.StyleIndex = (uint)this.SaveToStylesheet(cellstyle.ToHash());
                                 stylecache[iCacheStyleIndex] = c.StyleIndex;
                             }
-                            slws.Cells[intersectionpt] = c.Clone();
+                            slws.CellWarehouse.SetValue(rowindex, i, c);
                         }
                     }
                 }
@@ -2135,7 +2781,7 @@ namespace SpreadsheetLight
                                 sw.Write("<x:numFmts count=\"{0}\">", listKeys.Count);
                                 for (i = 0; i < listKeys.Count; ++i)
                                 {
-                                    sw.Write("<x:numFmt numFmtId=\"{0}\" formatCode=\"{1}\" />", listKeys[i], SLTool.XmlWrite(dictStyleNumberingFormat[listKeys[i]]));
+                                    sw.Write("<x:numFmt numFmtId=\"{0}\" formatCode=\"{1}\" />", listKeys[i], SLTool.XmlWrite(dictStyleNumberingFormat[listKeys[i]], gbThrowExceptionsIfAny));
                                 }
                                 sw.Write("</x:numFmts>");
                             }

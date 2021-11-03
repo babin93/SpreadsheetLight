@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace SpreadsheetLight
@@ -30,7 +31,7 @@ namespace SpreadsheetLight
         /// <summary>
         /// Range of cells where the formula is applied.
         /// </summary>
-        public string Reference { get; set; }
+        public List<SLCellPointRange> Reference { get; set; }
 
         /// <summary>
         /// True for 2-dimensional data table. False otherwise.
@@ -88,7 +89,7 @@ namespace SpreadsheetLight
 
             this.FormulaType = CellFormulaValues.Normal;
             this.AlwaysCalculateArray = false;
-            this.Reference = "";
+            this.Reference = new List<SLCellPointRange>();
             this.DataTable2D = false;
             this.DataTableRow = false;
             this.Input1Deleted = false;
@@ -107,7 +108,7 @@ namespace SpreadsheetLight
             this.FormulaText = cf.Text;
             if (cf.FormulaType != null) this.FormulaType = cf.FormulaType.Value;
             if (cf.AlwaysCalculateArray != null) this.AlwaysCalculateArray = cf.AlwaysCalculateArray.Value;
-            if (cf.Reference != null) this.Reference = cf.Reference.Value;
+            if (cf.Reference != null) this.Reference = SLTool.TranslateReferenceToCellPointRangeList(cf.Reference.Value);
             if (cf.DataTable2D != null) this.DataTable2D = cf.DataTable2D.Value;
             if (cf.DataTableRow != null) this.DataTableRow = cf.DataTableRow.Value;
             if (cf.Input1Deleted != null) this.Input1Deleted = cf.Input1Deleted.Value;
@@ -126,7 +127,7 @@ namespace SpreadsheetLight
 
             if (this.FormulaType != CellFormulaValues.Normal) cf.FormulaType = this.FormulaType;
             if (this.AlwaysCalculateArray != false) cf.AlwaysCalculateArray = this.AlwaysCalculateArray;
-            if (this.Reference.Length > 0) cf.Reference = this.Reference;
+            if (this.Reference.Count > 0) cf.Reference = SLTool.TranslateCellPointRangeToRefSeq(this.Reference);
             if (this.DataTable2D != false) cf.DataTable2D = this.DataTable2D;
             if (this.DataTableRow != false) cf.DataTableRow = this.DataTableRow;
             if (this.Input1Deleted != false) cf.Input1Deleted = this.Input1Deleted;
@@ -168,7 +169,16 @@ namespace SpreadsheetLight
             cf.FormulaText = this.FormulaText;
             cf.FormulaType = this.FormulaType;
             cf.AlwaysCalculateArray = this.AlwaysCalculateArray;
-            cf.Reference = this.Reference;
+
+            for (int i = 0; i < this.Reference.Count; ++i)
+            {
+                cf.Reference.Add(new SLCellPointRange(
+                    this.Reference[i].StartRowIndex,
+                    this.Reference[i].StartColumnIndex,
+                    this.Reference[i].EndRowIndex,
+                    this.Reference[i].EndColumnIndex));
+            }
+
             cf.DataTable2D = this.DataTable2D;
             cf.DataTableRow = this.DataTableRow;
             cf.Input1Deleted = this.Input1Deleted;

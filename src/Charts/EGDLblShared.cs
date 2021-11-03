@@ -110,13 +110,13 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public string Separator { get; set; }
 
-        internal EGDLblShared(List<System.Drawing.Color> ThemeColors)
+        internal EGDLblShared(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             this.sFormatCode = SLConstants.NumberFormatGeneral;
             this.bSourceLinked = true;
             this.HasNumberingFormat = false;
             this.vLabelPosition = null;
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             this.ShowLegendKey = false;
             this.ShowValue = false;
             this.ShowCategoryName = false;

@@ -14,7 +14,8 @@ namespace SpreadsheetLight.Charts
 
         internal SLRstType RichText { get; set; }
 
-        internal SLDataLabelOptions(List<System.Drawing.Color> ThemeColors) : base(ThemeColors)
+        internal SLDataLabelOptions(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
+            : base(ThemeColors, ThrowExceptionsIfAny)
         {
             this.RichText = null;
         }
@@ -81,7 +82,7 @@ namespace SpreadsheetLight.Charts
                 lbl.Append(new C.NumberingFormat() { FormatCode = this.FormatCode, SourceLinked = this.SourceLinked });
             }
 
-            if (this.ShapeProperties.HasShapeProperties) lbl.Append(this.ShapeProperties.ToChartShapeProperties());
+            if (this.ShapeProperties.HasShapeProperties) lbl.Append(this.ShapeProperties.ToChartShapeProperties(false));
 
             if (this.vLabelPosition != null) lbl.Append(new C.DataLabelPosition() { Val = this.vLabelPosition.Value });
 
@@ -99,7 +100,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLDataLabelOptions Clone()
         {
-            SLDataLabelOptions dlo = new SLDataLabelOptions(this.ShapeProperties.listThemeColors);
+            SLDataLabelOptions dlo = new SLDataLabelOptions(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
             dlo.Rotation = this.Rotation;
             dlo.Vertical = this.Vertical;
             dlo.Anchor = this.Anchor;

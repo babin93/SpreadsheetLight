@@ -23,6 +23,7 @@ namespace SpreadsheetLight.Drawing
     public class SLFill
     {
         internal List<System.Drawing.Color> listThemeColors;
+        internal bool ThrowExceptionsIfAny { get; set; }
 
         internal SLFillType Type;
         internal bool HasFill
@@ -145,7 +146,7 @@ namespace SpreadsheetLight.Drawing
         internal SLColorTransform PatternForegroundColor { get; set; }
         internal SLColorTransform PatternBackgroundColor { get; set; }
 
-        internal SLFill(List<System.Drawing.Color> ThemeColors)
+        internal SLFill(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             int i;
             this.listThemeColors = new List<System.Drawing.Color>();
@@ -154,6 +155,8 @@ namespace SpreadsheetLight.Drawing
                 this.listThemeColors.Add(ThemeColors[i]);
             }
 
+            this.ThrowExceptionsIfAny = ThrowExceptionsIfAny;
+
             this.SetAllNull();
         }
 
@@ -161,7 +164,7 @@ namespace SpreadsheetLight.Drawing
         {
             this.Type = SLFillType.Automatic;
             this.SolidColor = new SLColorTransform(this.listThemeColors);
-            this.GradientColor = new SLGradientFill(this.listThemeColors);
+            this.GradientColor = new SLGradientFill(this.listThemeColors, this.ThrowExceptionsIfAny);
             this.BlipFileName = string.Empty;
             this.BlipRelationshipID = string.Empty;
             this.BlipTile = true;
@@ -577,7 +580,7 @@ namespace SpreadsheetLight.Drawing
 
         internal SLFill Clone()
         {
-            SLFill fill = new SLFill(this.listThemeColors);
+            SLFill fill = new SLFill(this.listThemeColors, this.ThrowExceptionsIfAny);
             fill.Type = this.Type;
             fill.SolidColor = this.SolidColor.Clone();
             fill.GradientColor = this.GradientColor.Clone();

@@ -8,8 +8,9 @@ namespace SpreadsheetLight
         /// This returns the width in points
         /// </summary>
         /// <param name="FontName"></param>
+        /// <param name="ThrowExceptionsIfAny"></param>
         /// <returns></returns>
-        internal static double GetDefaultRowHeadingWidth(string FontName)
+        internal static double GetDefaultRowHeadingWidth(string FontName, bool ThrowExceptionsIfAny)
         {
             // Yes, this is a long list of hard-coded values. Blame Excel, because I don't
             // know how to calculate that top-left corner box that's to the left of column
@@ -296,7 +297,7 @@ namespace SpreadsheetLight
                     {
                         using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(bmExtra))
                         {
-                            fDefaultRowHeadingWidth = (double)SLTool.MeasureText(bmExtra, g, sText, SLTool.GetUsableNormalFont(FontName, fFontSize, System.Drawing.FontStyle.Regular)).Width;
+                            fDefaultRowHeadingWidth = (double)SLTool.MeasureText(bmExtra, g, sText, SLTool.GetUsableNormalFont(FontName, fFontSize, System.Drawing.FontStyle.Regular, ThrowExceptionsIfAny)).Width;
                             fDefaultRowHeadingWidth += fPadding;
                             fDefaultRowHeadingWidth = fDefaultRowHeadingWidth * (double)SLDocument.PixelToEMU / (double)SLConstants.PointToEMU;
                         }

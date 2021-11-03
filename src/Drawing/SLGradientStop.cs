@@ -28,7 +28,7 @@ namespace SpreadsheetLight.Drawing
             this.Position = 0m;
         }
 
-        internal SLGradientStop(List<System.Drawing.Color> ThemeColors, string HexColor, decimal Position)
+        internal SLGradientStop(List<System.Drawing.Color> ThemeColors, string HexColor, decimal Position, bool ThrowExceptionsIfAny)
         {
             this.Color = new SLColorTransform(ThemeColors);
             this.Position = Position;
@@ -38,9 +38,16 @@ namespace SpreadsheetLight.Drawing
             {
                 clr = System.Drawing.Color.FromArgb(int.Parse(HexColor, System.Globalization.NumberStyles.HexNumber));
             }
-            catch
+            catch (Exception e)
             {
-                clr = System.Drawing.Color.White;
+                if (ThrowExceptionsIfAny)
+                {
+                    throw e;
+                }
+                else
+                {
+                    clr = System.Drawing.Color.White;
+                }
             }
             this.Color.SetColor(clr, 0);
         }

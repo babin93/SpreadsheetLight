@@ -235,19 +235,24 @@ namespace SpreadsheetLight
             // TODO update for cells in other worksheets
             // One of the few cases where having a shared formula repository is useful... (like shared strings)
             SLCell c;
-            List<SLCellPoint> listCellKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-            for (i = 0; i < listCellKeys.Count; ++i)
+            List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+            List<int> listColumnKeys;
+            foreach (int rowkey in listRowKeys)
             {
-                c = slws.Cells[listCellKeys[i]];
-                if (c.CellText != null && c.CellText.StartsWith("="))
+                listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                foreach (int colkey in listColumnKeys)
                 {
-                    c.CellText = Regex.Replace(c.CellText, sPattern, sReplacement);
+                    c = slws.CellWarehouse.Cells[rowkey][colkey];
+                    if (c.CellText != null && c.CellText.StartsWith("="))
+                    {
+                        c.CellText = Regex.Replace(c.CellText, sPattern, sReplacement);
+                    }
+                    if (c.CellFormula != null)
+                    {
+                        c.CellFormula.FormulaText = Regex.Replace(c.CellFormula.FormulaText, sPattern, sReplacement);
+                    }
+                    slws.CellWarehouse.SetValue(rowkey, colkey, c);
                 }
-                if (c.CellFormula != null)
-                {
-                    c.CellFormula.FormulaText = Regex.Replace(c.CellFormula.FormulaText, sPattern, sReplacement);
-                }
-                slws.Cells[listCellKeys[i]] = c;
             }
 
             // this updates an chart references
@@ -296,8 +301,6 @@ namespace SpreadsheetLight
             {
                 return false;
             }
-
-            bool result = false;
 
             bool bExistingFound = false;
             string sExistingRelId = string.Empty;
@@ -740,7 +743,8 @@ namespace SpreadsheetLight
                 }
             }
 
-            return result;
+            // 5 Mar 2017: bug fix, return value used to be always false... bugger...
+            return true;
         }
 
         /// <summary>
@@ -787,6 +791,17 @@ namespace SpreadsheetLight
 
         /// <summary>
         /// Get a list of names of existing worksheets currently in the spreadsheet, excluding chart sheets, macro sheets and dialog sheets.
+        /// This is identical to GetSheetNames() but is more appropriately named.
+        /// </summary>
+        /// <returns>A list of names of existing worksheets.</returns>
+        public List<string> GetWorksheetNames()
+        {
+            return this.GetSheetNames(false);
+        }
+
+        /// <summary>
+        /// Get a list of names of existing worksheets currently in the spreadsheet, excluding chart sheets, macro sheets and dialog sheets.
+        /// This is identical to GetWorksheetNames() but is kept to maintain function overload consistency with the IncludeAll parameter version.
         /// </summary>
         /// <returns>A list of names of existing worksheets.</returns>
         public List<string> GetSheetNames()
@@ -830,46 +845,73 @@ namespace SpreadsheetLight
         {
             SLWorksheetStatistics wsstats = new SLWorksheetStatistics();
 
-            List<SLCellPoint> listCellRefKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-            listCellRefKeys.Sort(new SLCellReferencePointComparer());
-
-            List<int> intlist;
-
-            HashSet<int> hsRows = new HashSet<int>(listCellRefKeys.GroupBy(g => g.RowIndex).Select(s => s.Key).ToList<int>());
-            hsRows.UnionWith(slws.RowProperties.Keys.ToList<int>());
-
-            if (hsRows.Count > 0)
+            if (slws.CellWarehouse.Cells.Count > 0)
             {
-                intlist = hsRows.ToList<int>();
-                intlist.Sort();
-                wsstats.iStartRowIndex = intlist[0];
-                wsstats.iEndRowIndex = intlist[intlist.Count - 1];
-            }
+                HashSet<int> hsRows = new HashSet<int>();
+                HashSet<int> hsColumns = new HashSet<int>();
 
-            HashSet<int> hsColumns = new HashSet<int>(listCellRefKeys.GroupBy(g => g.ColumnIndex).Select(s => s.Key).ToList<int>());
-            hsColumns.UnionWith(slws.ColumnProperties.Keys.ToList<int>());
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                List<int> listColumnKeys;
 
-            if (hsColumns.Count > 0)
-            {
-                intlist = hsColumns.ToList<int>();
-                intlist.Sort();
-                wsstats.iStartColumnIndex = intlist[0];
-                wsstats.iEndColumnIndex = intlist[intlist.Count - 1];
-            }
+                listRowKeys.Sort();
 
-            wsstats.iNumberOfRows = hsRows.Count;
-            wsstats.iNumberOfColumns = hsColumns.Count;
-            wsstats.iNumberOfCells = listCellRefKeys.Count;
-
-            wsstats.iNumberOfEmptyCells = 0;
-            SLCell c;
-            foreach (SLCellPoint pt in listCellRefKeys)
-            {
-                c = slws.Cells[pt];
-                if (c.CellText != null && c.CellText.Length == 0 && c.CellFormula == null)
+                if (listRowKeys.Count > 0)
                 {
-                    ++wsstats.iNumberOfEmptyCells;
+                    wsstats.iStartRowIndex = listRowKeys[0];
+                    wsstats.iEndRowIndex = listRowKeys[0];
+
+                    listColumnKeys = slws.CellWarehouse.Cells[listRowKeys[0]].Keys.ToList<int>();
+
+                    if (listColumnKeys.Count > 0)
+                    {
+                        wsstats.iStartColumnIndex = listColumnKeys[0];
+                        wsstats.iEndColumnIndex = listColumnKeys[0];
+                    }
                 }
+
+                wsstats.iNumberOfCells = 0;
+                wsstats.iNumberOfEmptyCells = 0;
+
+                SLCell c;
+                foreach (int rowkey in listRowKeys)
+                {
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
+                    {
+                        if (rowkey < wsstats.iStartRowIndex) wsstats.iStartRowIndex = rowkey;
+                        if (rowkey > wsstats.iEndRowIndex) wsstats.iEndRowIndex = rowkey;
+                        if (colkey < wsstats.iStartColumnIndex) wsstats.iStartColumnIndex = colkey;
+                        if (colkey > wsstats.iEndColumnIndex) wsstats.iEndColumnIndex = colkey;
+
+                        if (!hsRows.Contains(rowkey)) hsRows.Add(rowkey);
+                        if (!hsColumns.Contains(colkey)) hsColumns.Add(colkey);
+
+                        ++wsstats.iNumberOfCells;
+
+                        c = slws.CellWarehouse.Cells[rowkey][colkey];
+                        if (c.CellText != null && c.CellText.Length == 0 && c.CellFormula == null)
+                        {
+                            ++wsstats.iNumberOfEmptyCells;
+                        }
+                    }
+                }
+
+                foreach (int rowindex in slws.RowProperties.Keys)
+                {
+                    if (rowindex < wsstats.iStartRowIndex) wsstats.iStartRowIndex = rowindex;
+                    if (rowindex > wsstats.iEndRowIndex) wsstats.iEndRowIndex = rowindex;
+                    if (!hsRows.Contains(rowindex)) hsRows.Add(rowindex);
+                }
+
+                foreach (int columnindex in slws.ColumnProperties.Keys)
+                {
+                    if (columnindex < wsstats.iStartColumnIndex) wsstats.iStartColumnIndex = columnindex;
+                    if (columnindex > wsstats.iEndColumnIndex) wsstats.iEndColumnIndex = columnindex;
+                    if (!hsColumns.Contains(columnindex)) hsColumns.Add(columnindex);
+                }
+
+                wsstats.iNumberOfRows = hsRows.Count;
+                wsstats.iNumberOfColumns = hsColumns.Count;
             }
 
             return wsstats;
@@ -1595,7 +1637,7 @@ namespace SpreadsheetLight
             }
             else
             {
-                this.SplitPanes(NumberOfRows, NumberOfColumns, true, slws.SheetFormatProperties.DefaultRowHeight, SLTool.GetDefaultRowHeadingWidth(SimpleTheme.MinorLatinFont), false);
+                this.SplitPanes(NumberOfRows, NumberOfColumns, true, slws.SheetFormatProperties.DefaultRowHeight, SLTool.GetDefaultRowHeadingWidth(SimpleTheme.MinorLatinFont, gbThrowExceptionsIfAny), false);
             }
         }
 
@@ -2549,7 +2591,7 @@ namespace SpreadsheetLight
                             // We null the priority so the extension fill color is not rendered.
                             // Presumably, it uses the color in the normally placed data bar.
                             // I don't know why Microsoft made it such that data bars exist in the
-                            // normal place and in the extension place.
+                            // normal place *and* in the extension place.
                             // Why not exist entirely in either the normal or extension like the
                             // Excel 2010 icon sets?
                             cfr2010new.Priority = null;
@@ -2558,7 +2600,7 @@ namespace SpreadsheetLight
                             // the normal placed data bar needs to have the min/max lengths as defaults.
                             // AKA 10 and 90 percent respectively.
                             // Hey reading that part of the specs takes longer than watching the Titanic
-                            // movie... and more convulated than a legal clause...
+                            // movie... and more convoluted than a legal clause...
                             ConditionalFormatting.Rules[i].DataBar.MinLength = 10;
                             ConditionalFormatting.Rules[i].DataBar.MaxLength = 90;
 
@@ -2735,7 +2777,6 @@ namespace SpreadsheetLight
                 iEndRowIndex = Table.EndRowIndex - 1;
 
                 SLTableColumn tc;
-                SLCellPoint pt;
                 List<SLCell> cells;
                 SLCell c;
                 string sResultText = string.Empty;
@@ -2750,18 +2791,17 @@ namespace SpreadsheetLight
                     {
                         c = new SLCell();
                         c.DataType = CellValues.SharedString;
-                        c.NumericValue = this.DirectSaveToSharedStringTable(SLTool.XmlWrite(tc.TotalsRowLabel));
-                        slws.Cells[new SLCellPoint(Table.EndRowIndex, Table.StartColumnIndex + j)] = c;
+                        c.NumericValue = this.DirectSaveToSharedStringTable(SLTool.XmlWrite(tc.TotalsRowLabel, gbThrowExceptionsIfAny));
+                        slws.CellWarehouse.SetValue(Table.EndRowIndex, Table.StartColumnIndex + j, c);
                     }
                     if (tc.HasTotalsRowFunction)
                     {
                         cells = new List<SLCell>();
                         for (i = iStartRowIndex; i <= iEndRowIndex; ++i)
                         {
-                            pt = new SLCellPoint(i, Table.StartColumnIndex + j);
-                            if (slws.Cells.ContainsKey(pt))
+                            if (slws.CellWarehouse.Exists(i, Table.StartColumnIndex + j))
                             {
-                                cells.Add(slws.Cells[pt].Clone());
+                                cells.Add(slws.CellWarehouse.Cells[i][Table.StartColumnIndex + j].Clone());
                             }
                         }
 
@@ -2773,14 +2813,13 @@ namespace SpreadsheetLight
                             c.DataType = CellValues.Error;
                         }
                         c.CellText = sResultText;
-                        pt = new SLCellPoint(Table.EndRowIndex, Table.StartColumnIndex + j);
 
                         iStyleIndex = 0;
-                        if (slws.RowProperties.ContainsKey(pt.RowIndex)) iStyleIndex = slws.RowProperties[pt.RowIndex].StyleIndex;
-                        if (iStyleIndex == 0 && slws.ColumnProperties.ContainsKey(pt.ColumnIndex)) iStyleIndex = slws.ColumnProperties[pt.ColumnIndex].StyleIndex;
+                        if (slws.RowProperties.ContainsKey(Table.EndRowIndex)) iStyleIndex = slws.RowProperties[Table.EndRowIndex].StyleIndex;
+                        if (iStyleIndex == 0 && slws.ColumnProperties.ContainsKey(Table.StartColumnIndex + j)) iStyleIndex = slws.ColumnProperties[Table.StartColumnIndex + j].StyleIndex;
                         if (iStyleIndex != 0) c.StyleIndex = (uint)iStyleIndex;
 
-                        slws.Cells[pt] = c;
+                        slws.CellWarehouse.SetValue(Table.EndRowIndex, Table.StartColumnIndex + j, c);
 
                         cc = new SLCalculationCell(SLTool.ToCellReference(Table.EndRowIndex, Table.StartColumnIndex + j));
                         cc.SheetId = (int)giSelectedWorksheetID;

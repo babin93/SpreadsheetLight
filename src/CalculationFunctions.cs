@@ -7,6 +7,64 @@ namespace SpreadsheetLight
 {
     public partial class SLDocument
     {
+        /// <summary>
+        /// Flattens shared cell formulas into respective cells.
+        /// For example, if there's a shared cell formula in A2 for the range A2:A6, the shared cell formula will be
+        /// individually assigned into A2, A3, A4, A5 and A6. And the shared cell formula portion will then be removed.
+        /// </summary>
+        public void FlattenAllSharedCellFormula()
+        {
+            if (slws.SharedCellFormulas.Count > 0)
+            {
+                SLCell cell;
+                int i, iRowIndex, iColumnIndex;
+                bool bHasError;
+                foreach (SLSharedCellFormula scf in slws.SharedCellFormulas.Values)
+                {
+                    for (i = 0; i < scf.Reference.Count; ++i)
+                    {
+                        for (iRowIndex = scf.Reference[i].StartRowIndex; iRowIndex <= scf.Reference[i].EndRowIndex; ++iRowIndex)
+                        {
+                            for (iColumnIndex = scf.Reference[i].StartColumnIndex; iColumnIndex <= scf.Reference[i].EndColumnIndex; ++iColumnIndex)
+                            {
+                                if (slws.CellWarehouse.Exists(iRowIndex, iColumnIndex))
+                                {
+                                    cell = slws.CellWarehouse.Cells[iRowIndex][iColumnIndex].Clone();
+                                    if (iRowIndex == scf.BaseCellRowIndex && iColumnIndex == scf.BaseCellColumnIndex)
+                                    {
+                                        cell.CellFormula = new SLCellFormula();
+                                        cell.CellFormula.FormulaType = CellFormulaValues.Normal;
+                                        cell.CellFormula.FormulaText = scf.FormulaText;
+                                        cell.CellText = "";
+                                    }
+                                    else
+                                    {
+                                        bHasError = false;
+                                        cell.CellFormula = new SLCellFormula();
+                                        cell.CellFormula.FormulaType = CellFormulaValues.Normal;
+                                        cell.CellFormula.FormulaText = AdjustCellFormulaDelta(scf.FormulaText, false, scf.BaseCellRowIndex, scf.BaseCellColumnIndex, iRowIndex, iColumnIndex, false, false, false, false, 0, 0, out bHasError);
+                                        if (bHasError)
+                                        {
+                                            cell.CellText = SLConstants.ErrorReference;
+                                            cell.DataType = CellValues.Error;
+                                        }
+                                        else
+                                        {
+                                            cell.CellText = "";
+                                        }
+                                    }
+
+                                    slws.CellWarehouse.SetValue(iRowIndex, iColumnIndex, cell);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                slws.SharedCellFormulas.Clear();
+            }
+        }
+
         internal bool Calculate(TotalsRowFunctionValues Function, List<SLCell> Cells, out string ResultText)
         {
             if (Function == TotalsRowFunctionValues.None)

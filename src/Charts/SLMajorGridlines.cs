@@ -34,9 +34,9 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLA.SLSoftEdge SoftEdge { get { return this.ShapeProperties.EffectList.SoftEdge; } }
 
-        internal SLMajorGridlines(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLMajorGridlines(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             if (IsStylish)
             {
                 this.ShapeProperties.Outline.Width = 0.75m;
@@ -53,10 +53,10 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
-        internal C.MajorGridlines ToMajorGridlines(bool IsStylish = false)
+        internal C.MajorGridlines ToMajorGridlines(bool IsStylish)
         {
             C.MajorGridlines mgl = new C.MajorGridlines();
 
@@ -67,7 +67,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLMajorGridlines Clone()
         {
-            SLMajorGridlines mgl = new SLMajorGridlines(this.ShapeProperties.listThemeColors);
+            SLMajorGridlines mgl = new SLMajorGridlines(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             mgl.ShapeProperties = this.ShapeProperties.Clone();
 
             return mgl;
