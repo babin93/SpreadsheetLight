@@ -114,18 +114,19 @@ namespace SpreadsheetLight
                 if (SortByIndex < iStartRowIndex || SortByIndex > iEndRowIndex) return;
             }
 
-            Dictionary<SLCellPoint, SLCell> datacells = new Dictionary<SLCellPoint, SLCell>();
-            SLCellPoint pt;
+            SLCellWarehouse datacells = new SLCellWarehouse();
+            int iRowIndex, iColumnIndex;
             int i, j;
             for (i = iStartRowIndex; i <= iEndRowIndex; ++i)
             {
                 for (j = iStartColumnIndex; j <= iEndColumnIndex; ++j)
                 {
-                    pt = new SLCellPoint(i, j);
-                    if (slws.Cells.ContainsKey(pt))
+                    iRowIndex = i;
+                    iColumnIndex = j;
+                    if (slws.CellWarehouse.Exists(iRowIndex, iColumnIndex))
                     {
-                        datacells[pt] = slws.Cells[pt].Clone();
-                        slws.Cells.Remove(pt);
+                        datacells.SetValue(iRowIndex, iColumnIndex, slws.CellWarehouse.Cells[iRowIndex][iColumnIndex]);
+                        slws.CellWarehouse.Remove(iRowIndex, iColumnIndex);
                     }
                 }
             }
@@ -156,36 +157,44 @@ namespace SpreadsheetLight
 
             for (i = iStartIndex; i <= iEndIndex; ++i)
             {
-                if (SortByColumn) pt = new SLCellPoint(i, SortByIndex);
-                else pt = new SLCellPoint(SortByIndex, i);
-
-                if (datacells.ContainsKey(pt))
+                if (SortByColumn)
                 {
-                    if (datacells[pt].DataType == CellValues.Number)
+                    iRowIndex = i;
+                    iColumnIndex = SortByIndex;
+                }
+                else
+                {
+                    iRowIndex = SortByIndex;
+                    iColumnIndex = i;
+                }
+
+                if (datacells.Exists(iRowIndex, iColumnIndex))
+                {
+                    if (datacells.Cells[iRowIndex][iColumnIndex].DataType == CellValues.Number)
                     {
-                        if (datacells[pt].CellText != null)
+                        if (datacells.Cells[iRowIndex][iColumnIndex].CellText != null)
                         {
-                            if (double.TryParse(datacells[pt].CellText, out fValue))
+                            if (double.TryParse(datacells.Cells[iRowIndex][iColumnIndex].CellText, out fValue))
                             {
                                 listNumbers.Add(new SLSortItem() { Number = fValue, Index = i });
                             }
                             else
                             {
-                                listText.Add(new SLSortItem() { Text = datacells[pt].CellText, Index = i });
+                                listText.Add(new SLSortItem() { Text = datacells.Cells[iRowIndex][iColumnIndex].CellText, Index = i });
                             }
                         }
                         else
                         {
-                            listNumbers.Add(new SLSortItem() { Number = datacells[pt].NumericValue, Index = i });
+                            listNumbers.Add(new SLSortItem() { Number = datacells.Cells[iRowIndex][iColumnIndex].NumericValue, Index = i });
                         }
                     }
-                    else if (datacells[pt].DataType == CellValues.SharedString)
+                    else if (datacells.Cells[iRowIndex][iColumnIndex].DataType == CellValues.SharedString)
                     {
                         index = -1;
 
-                        if (datacells[pt].CellText != null)
+                        if (datacells.Cells[iRowIndex][iColumnIndex].CellText != null)
                         {
-                            if (int.TryParse(datacells[pt].CellText, out index)
+                            if (int.TryParse(datacells.Cells[iRowIndex][iColumnIndex].CellText, out index)
                                 && index >= 0 && index < listSharedString.Count)
                             {
                                 rst = new SLRstType(SLConstants.OfficeThemeMajorLatinFont, SLConstants.OfficeThemeMinorLatinFont, new List<System.Drawing.Color>(), new List<System.Drawing.Color>());
@@ -194,12 +203,12 @@ namespace SpreadsheetLight
                             }
                             else
                             {
-                                listText.Add(new SLSortItem() { Text = datacells[pt].CellText, Index = i });
+                                listText.Add(new SLSortItem() { Text = datacells.Cells[iRowIndex][iColumnIndex].CellText, Index = i });
                             }
                         }
                         else
                         {
-                            index = Convert.ToInt32(datacells[pt].NumericValue);
+                            index = Convert.ToInt32(datacells.Cells[iRowIndex][iColumnIndex].NumericValue);
                             if (index >= 0 && index < listSharedString.Count)
                             {
                                 rst = new SLRstType(SLConstants.OfficeThemeMajorLatinFont, SLConstants.OfficeThemeMinorLatinFont, new List<System.Drawing.Color>(), new List<System.Drawing.Color>());
@@ -208,35 +217,35 @@ namespace SpreadsheetLight
                             }
                             else
                             {
-                                listText.Add(new SLSortItem() { Text = datacells[pt].NumericValue.ToString(CultureInfo.InvariantCulture), Index = i });
+                                listText.Add(new SLSortItem() { Text = datacells.Cells[iRowIndex][iColumnIndex].NumericValue.ToString(CultureInfo.InvariantCulture), Index = i });
                             }
                         }
                     }
-                    else if (datacells[pt].DataType == CellValues.Boolean)
+                    else if (datacells.Cells[iRowIndex][iColumnIndex].DataType == CellValues.Boolean)
                     {
-                        if (datacells[pt].CellText != null)
+                        if (datacells.Cells[iRowIndex][iColumnIndex].CellText != null)
                         {
-                            if (double.TryParse(datacells[pt].CellText, NumberStyles.Any, CultureInfo.InvariantCulture, out fValue))
+                            if (double.TryParse(datacells.Cells[iRowIndex][iColumnIndex].CellText, NumberStyles.Any, CultureInfo.InvariantCulture, out fValue))
                             {
                                 listBoolean.Add(new SLSortItem() { Number = fValue > 0.5 ? 1.0 : 0.0, Index = i });
                             }
-                            else if (bool.TryParse(datacells[pt].CellText, out bValue))
+                            else if (bool.TryParse(datacells.Cells[iRowIndex][iColumnIndex].CellText, out bValue))
                             {
                                 listBoolean.Add(new SLSortItem() { Number = bValue ? 1.0 : 0.0, Index = i });
                             }
                             else
                             {
-                                listText.Add(new SLSortItem() { Text = datacells[pt].CellText, Index = i });
+                                listText.Add(new SLSortItem() { Text = datacells.Cells[iRowIndex][iColumnIndex].CellText, Index = i });
                             }
                         }
                         else
                         {
-                            listBoolean.Add(new SLSortItem() { Number = datacells[pt].NumericValue > 0.5 ? 1.0 : 0.0, Index = i });
+                            listBoolean.Add(new SLSortItem() { Number = datacells.Cells[iRowIndex][iColumnIndex].NumericValue > 0.5 ? 1.0 : 0.0, Index = i });
                         }
                     }
                     else
                     {
-                        listText.Add(new SLSortItem() { Text = datacells[pt].CellText, Index = i });
+                        listText.Add(new SLSortItem() { Text = datacells.Cells[iRowIndex][iColumnIndex].CellText, Index = i });
                     }
                 }
                 else
@@ -310,37 +319,47 @@ namespace SpreadsheetLight
                 }
             }
 
-            List<SLCellPoint> listCellKeys = datacells.Keys.ToList<SLCellPoint>();
-            SLCellPoint newpt;
-            for (i = 0; i < listCellKeys.Count; ++i)
+            List<int> listRowKeys = datacells.Cells.Keys.ToList<int>();
+            List<int> listColumnKeys;
+            int iNewRowIndex, iNewColumnIndex;
+            foreach (int rowkey in listRowKeys)
             {
-                pt = listCellKeys[i];
-                if (SortByColumn)
+                listColumnKeys = datacells.Cells[rowkey].Keys.ToList<int>();
+                foreach (int colkey in listColumnKeys)
                 {
-                    if (ReverseIndex.ContainsKey(pt.RowIndex))
+                    iRowIndex = rowkey;
+                    iColumnIndex = colkey;
+                    if (SortByColumn)
                     {
-                        newpt = new SLCellPoint(ReverseIndex[pt.RowIndex], pt.ColumnIndex);
+                        if (ReverseIndex.ContainsKey(iRowIndex))
+                        {
+                            iNewRowIndex = ReverseIndex[iRowIndex];
+                            iNewColumnIndex = iColumnIndex;
+                        }
+                        else
+                        {
+                            // shouldn't happen, but just in case...
+                            iNewRowIndex = iRowIndex;
+                            iNewColumnIndex = iColumnIndex;
+                        }
                     }
                     else
                     {
-                        // shouldn't happen, but just in case...
-                        newpt = new SLCellPoint(pt.RowIndex, pt.ColumnIndex);
+                        if (ReverseIndex.ContainsKey(iColumnIndex))
+                        {
+                            iNewRowIndex = iRowIndex;
+                            iNewColumnIndex = ReverseIndex[iColumnIndex];
+                        }
+                        else
+                        {
+                            // shouldn't happen, but just in case...
+                            iNewRowIndex = iRowIndex;
+                            iNewColumnIndex = iColumnIndex;
+                        }
                     }
-                }
-                else
-                {
-                    if (ReverseIndex.ContainsKey(pt.ColumnIndex))
-                    {
-                        newpt = new SLCellPoint(pt.RowIndex, ReverseIndex[pt.ColumnIndex]);
-                    }
-                    else
-                    {
-                        // shouldn't happen, but just in case...
-                        newpt = new SLCellPoint(pt.RowIndex, pt.ColumnIndex);
-                    }
-                }
 
-                slws.Cells[newpt] = datacells[pt];
+                    slws.CellWarehouse.SetValue(iNewRowIndex, iNewColumnIndex, datacells.Cells[iRowIndex][iColumnIndex]);
+                }
             }
         }
     }

@@ -338,7 +338,7 @@ namespace SpreadsheetLight
             }
 
             Run run;
-            PhoneticRun phrun;
+            //PhoneticRun phrun;
             foreach (var child in this.istrReal.ChildElements)
             {
                 if (child is Run)
@@ -350,15 +350,21 @@ namespace SpreadsheetLight
                         sb.Append(run.Text.Text);
                     }
                 }
-                else if (child is PhoneticRun)
-                {
-                    phrun = (PhoneticRun)child;
-                    // the Text child class is compulsory, but just in case...
-                    if (phrun.Text != null)
-                    {
-                        sb.Append(phrun.Text.Text);
-                    }
-                }
+
+                // 19 Oct 2016: No need to retrieve phonetic text. I don't know how it's
+                // used. I don't type Japanese and other phonetic-related languages.
+                // Apparently this is auto-entered by Excel when you type Japanese into
+                // the cells (via Excel, not via libraries).
+                // Thanks to Vincent D (yes, same first name :) for pointing this out.
+                //else if (child is PhoneticRun)
+                //{
+                //    phrun = (PhoneticRun)child;
+                //    // the Text child class is compulsory, but just in case...
+                //    if (phrun.Text != null)
+                //    {
+                //        sb.Append(phrun.Text.Text);
+                //    }
+                //}
             }
 
             return sb.ToString();

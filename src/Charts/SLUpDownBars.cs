@@ -34,14 +34,14 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLDownBars DownBars { get; set; }
 
-        internal SLUpDownBars(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLUpDownBars(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.iGapWidth = 150;
-            this.UpBars = new SLUpBars(ThemeColors, IsStylish);
-            this.DownBars = new SLDownBars(ThemeColors, IsStylish);
+            this.UpBars = new SLUpBars(ThemeColors, IsStylish, ThrowExceptionsIfAny);
+            this.DownBars = new SLDownBars(ThemeColors, IsStylish, ThrowExceptionsIfAny);
         }
 
-        internal C.UpDownBars ToUpDownBars(bool IsStylish = false)
+        internal C.UpDownBars ToUpDownBars(bool IsStylish)
         {
             C.UpDownBars udb = new C.UpDownBars();
             udb.GapWidth = new C.GapWidth() { Val = iGapWidth };
@@ -53,7 +53,8 @@ namespace SpreadsheetLight.Charts
 
         internal SLUpDownBars Clone()
         {
-            SLUpDownBars udb = new SLUpDownBars(new List<System.Drawing.Color>());
+            // use the upbar as reference
+            SLUpDownBars udb = new SLUpDownBars(this.UpBars.ShapeProperties.listThemeColors, false, this.UpBars.ShapeProperties.ThrowExceptionsIfAny);
             udb.iGapWidth = this.iGapWidth;
             udb.UpBars = this.UpBars.Clone();
             udb.DownBars = this.DownBars.Clone();

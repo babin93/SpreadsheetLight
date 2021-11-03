@@ -50,6 +50,7 @@ namespace SpreadsheetLight
             countSharedString = 0;
             listSharedString = new List<string>();
             dictSharedStringHash = new Dictionary<string, int>();
+            hsUniqueSharedString = new HashSet<string>();
 
             if (wbp.SharedStringTablePart != null)
             {
@@ -73,8 +74,16 @@ namespace SpreadsheetLight
             {
                 if (listSharedString.Count > countSharedString)
                 {
-                    wbp.SharedStringTablePart.SharedStringTable.Count = (uint)listSharedString.Count;
-                    wbp.SharedStringTablePart.SharedStringTable.UniqueCount = (uint)dictSharedStringHash.Count;
+                    if (gbWriteUniqueSharedStringCount)
+                    {
+                        wbp.SharedStringTablePart.SharedStringTable.Count = (uint)listSharedString.Count;
+                        wbp.SharedStringTablePart.SharedStringTable.UniqueCount = (uint)hsUniqueSharedString.Count;
+                    }
+                    else
+                    {
+                        wbp.SharedStringTablePart.SharedStringTable.Count = null;
+                        wbp.SharedStringTablePart.SharedStringTable.UniqueCount = null;
+                    }
 
                     int diff = listSharedString.Count - countSharedString;
                     for (int i = 0; i < diff; ++i)
@@ -97,7 +106,15 @@ namespace SpreadsheetLight
                     {
                         using (StreamWriter sw = new StreamWriter(ms))
                         {
-                            sw.Write("<x:sst count=\"{0}\" uniqueCount=\"{1}\" xmlns:x=\"{2}\">", listSharedString.Count, dictSharedStringHash.Count, SLConstants.NamespaceX);
+                            if (gbWriteUniqueSharedStringCount)
+                            {
+                                sw.Write("<x:sst count=\"{0}\" uniqueCount=\"{1}\" xmlns:x=\"{2}\">", listSharedString.Count, hsUniqueSharedString.Count, SLConstants.NamespaceX);
+                            }
+                            else
+                            {
+                                sw.Write("<x:sst xmlns:x=\"{0}\">", SLConstants.NamespaceX);
+                            }
+                            
                             for (int i = 0; i < listSharedString.Count; ++i)
                             {
                                 sw.Write("<x:si>{0}</x:si>", listSharedString[i]);

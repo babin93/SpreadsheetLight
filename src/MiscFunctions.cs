@@ -750,12 +750,11 @@ namespace SpreadsheetLight
 
             if (ToolTip != null && ToolTip.Length > 0) hl.ToolTip = ToolTip;
 
-            SLCellPoint pt = new SLCellPoint(RowIndex, ColumnIndex);
             SLCell c;
             SLStyle style;
-            if (slws.Cells.ContainsKey(pt))
+            if (slws.CellWarehouse.Exists(RowIndex, ColumnIndex))
             {
-                c = slws.Cells[pt];
+                c = slws.CellWarehouse.Cells[RowIndex][ColumnIndex];
                 style = new SLStyle();
                 if (c.StyleIndex < listStyle.Count) style.FromHash(listStyle[(int)c.StyleIndex]);
                 else style.FromHash(listStyle[0]);
@@ -772,7 +771,7 @@ namespace SpreadsheetLight
                 }
                 // else don't have to do anything
 
-                slws.Cells[pt] = c.Clone();
+                slws.CellWarehouse.SetValue(RowIndex, ColumnIndex, c);
             }
             else
             {
@@ -786,7 +785,7 @@ namespace SpreadsheetLight
 
                 c.DataType = CellValues.SharedString;
                 c.CellText = this.DirectSaveToSharedStringTable(hl.Display).ToString(CultureInfo.InvariantCulture);
-                slws.Cells[pt] = c.Clone();
+                slws.CellWarehouse.SetValue(RowIndex, ColumnIndex, c);
             }
 
             slws.Hyperlinks.Add(hl);
@@ -897,19 +896,17 @@ namespace SpreadsheetLight
             {
                 // remove hyperlink style
                 SLCell c;
-                SLCellPoint pt;
                 foreach (SLCellPointRange ptrange in listdelete)
                 {
                     for (i = ptrange.StartRowIndex; i <= ptrange.EndRowIndex; ++i)
                     {
                         for (j = ptrange.StartColumnIndex; j <= ptrange.EndColumnIndex; ++j)
                         {
-                            pt = new SLCellPoint(i, j);
-                            if (slws.Cells.ContainsKey(pt))
+                            if (slws.CellWarehouse.Exists(i, j))
                             {
-                                c = slws.Cells[pt];
+                                c = slws.CellWarehouse.Cells[i][j];
                                 c.StyleIndex = 0;
-                                slws.Cells[pt] = c.Clone();
+                                slws.CellWarehouse.SetValue(i, j, c);
                             }
                         }
                     }

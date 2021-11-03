@@ -631,6 +631,7 @@ namespace SpreadsheetLight.Charts
     public class SLChart
     {
         internal List<System.Drawing.Color> listThemeColors;
+        internal bool ThrowExceptionsIfAny { get; set; }
         internal bool Date1904 { get; set; }
 
         /// <summary>
@@ -1147,7 +1148,7 @@ namespace SpreadsheetLight.Charts
             SLDataSeries ser;
             for (index = 0, i = 0; i < this.PlotArea.DataSeries.Count; ++index, ++i)
             {
-                ser = new SLDataSeries(this.listThemeColors);
+                ser = new SLDataSeries(this.listThemeColors, this.ThrowExceptionsIfAny);
                 ser.Index = (uint)index;
                 ser.Order = (uint)index;
                 ser.IsStringReference = null;
@@ -3067,7 +3068,7 @@ namespace SpreadsheetLight.Charts
         /// <returns>The data series options for the specific data series. If the index is out of bounds, a default is returned.</returns>
         public SLDataSeriesOptions GetDataSeriesOptions(int DataSeriesIndex)
         {
-            SLDataSeriesOptions dso = new SLDataSeriesOptions(this.listThemeColors);
+            SLDataSeriesOptions dso = new SLDataSeriesOptions(this.listThemeColors, this.ThrowExceptionsIfAny);
 
             int index = DataSeriesIndex - 1;
 
@@ -3230,7 +3231,7 @@ namespace SpreadsheetLight.Charts
         /// <returns>An SLAreaChartOptions object with theme information.</returns>
         public SLAreaChartOptions CreateAreaChartOptions()
         {
-            SLAreaChartOptions aco = new SLAreaChartOptions(this.listThemeColors, this.IsStylish);
+            SLAreaChartOptions aco = new SLAreaChartOptions(this.listThemeColors, this.IsStylish, this.ThrowExceptionsIfAny);
             return aco;
         }
 
@@ -3240,7 +3241,7 @@ namespace SpreadsheetLight.Charts
         /// <returns>An SLLineChartOptions object with theme information.</returns>
         public SLLineChartOptions CreateLineChartOptions()
         {
-            SLLineChartOptions lco = new SLLineChartOptions(this.listThemeColors, this.IsStylish);
+            SLLineChartOptions lco = new SLLineChartOptions(this.listThemeColors, this.IsStylish, this.ThrowExceptionsIfAny);
             return lco;
         }
 
@@ -3250,7 +3251,7 @@ namespace SpreadsheetLight.Charts
         /// <returns>An SLPieChartOptions object with theme information.</returns>
         public SLPieChartOptions CreatePieChartOptions()
         {
-            SLPieChartOptions pco = new SLPieChartOptions(this.listThemeColors);
+            SLPieChartOptions pco = new SLPieChartOptions(this.listThemeColors, this.ThrowExceptionsIfAny);
             if (this.IsStylish)
             {
                 pco.Line.Width = 0.75m;
@@ -3269,7 +3270,7 @@ namespace SpreadsheetLight.Charts
         /// <returns>An SLStockChartOptions object with theme information.</returns>
         public SLStockChartOptions CreateStockChartOptions()
         {
-            SLStockChartOptions sco = new SLStockChartOptions(this.listThemeColors, this.IsStylish);
+            SLStockChartOptions sco = new SLStockChartOptions(this.listThemeColors, this.IsStylish, this.ThrowExceptionsIfAny);
             return sco;
         }
 
@@ -3532,20 +3533,19 @@ namespace SpreadsheetLight.Charts
                     case SLRadarChartType.Radar:
                         this.PlotArea.UsedChartOptions[iChartType].RadarStyle = C.RadarStyleValues.Marker;
                         this.PlotArea.DataSeries[index].Options.Marker.Symbol = C.MarkerStyleValues.None;
-                        this.PlotArea.DataSeries[index].ChartType = vType;
                         break;
                     case SLRadarChartType.RadarWithMarkers:
                         this.PlotArea.UsedChartOptions[iChartType].RadarStyle = C.RadarStyleValues.Marker;
                         this.PlotArea.DataSeries[index].Options.Marker.vSymbol = null;
-                        this.PlotArea.DataSeries[index].ChartType = vType;
                         break;
                     case SLRadarChartType.FilledRadar:
                         this.PlotArea.UsedChartOptions[iChartType].RadarStyle = C.RadarStyleValues.Filled;
                         this.PlotArea.DataSeries[index].Options.Marker.vSymbol = null;
-                        this.PlotArea.DataSeries[index].ChartType = vType;
                         break;
                 }
             }
+
+            this.PlotArea.DataSeries[index].ChartType = vType;
         }
 
         /// <summary>
@@ -3661,9 +3661,9 @@ namespace SpreadsheetLight.Charts
                         else this.PlotArea.SecondaryValueAxis.FormatCode = "0%";
                         break;
                 }
-
-                this.PlotArea.DataSeries[index].ChartType = vType;
             }
+
+            this.PlotArea.DataSeries[index].ChartType = vType;
         }
 
         /// <summary>
@@ -3850,9 +3850,9 @@ namespace SpreadsheetLight.Charts
                         if (Options != null) this.PlotArea.UsedChartOptions[iChartType].MergeOptions(Options);
                         break;
                 }
-
-                this.PlotArea.DataSeries[index].ChartType = vType;
             }
+
+            this.PlotArea.DataSeries[index].ChartType = vType;
         }
 
         /// <summary>
@@ -3933,32 +3933,29 @@ namespace SpreadsheetLight.Charts
                 {
                     case SLScatterChartType.ScatterWithOnlyMarkers:
                         this.PlotArea.UsedChartOptions[iChartType].ScatterStyle = C.ScatterStyleValues.LineMarker;
-                        this.PlotArea.DataSeries[index].ChartType = vType;
                         this.PlotArea.DataSeries[index].Options.Line.Width = 2.25m;
                         this.PlotArea.DataSeries[index].Options.Line.SetNoLine();
                         break;
                     case SLScatterChartType.ScatterWithSmoothLinesAndMarkers:
                         this.PlotArea.UsedChartOptions[iChartType].ScatterStyle = C.ScatterStyleValues.SmoothMarker;
-                        this.PlotArea.DataSeries[index].ChartType = vType;
                         this.PlotArea.DataSeries[index].Options.Smooth = true;
                         break;
                     case SLScatterChartType.ScatterWithSmoothLines:
                         this.PlotArea.UsedChartOptions[iChartType].ScatterStyle = C.ScatterStyleValues.SmoothMarker;
-                        this.PlotArea.DataSeries[index].ChartType = vType;
                         this.PlotArea.DataSeries[index].Options.Smooth = true;
                         this.PlotArea.DataSeries[index].Options.Marker.Symbol = C.MarkerStyleValues.None;
                         break;
                     case SLScatterChartType.ScatterWithStraightLinesAndMarkers:
                         this.PlotArea.UsedChartOptions[iChartType].ScatterStyle = C.ScatterStyleValues.LineMarker;
-                        this.PlotArea.DataSeries[index].ChartType = vType;
                         break;
                     case SLScatterChartType.ScatterWithStraightLines:
                         this.PlotArea.UsedChartOptions[iChartType].ScatterStyle = C.ScatterStyleValues.LineMarker;
-                        this.PlotArea.DataSeries[index].ChartType = vType;
                         this.PlotArea.DataSeries[index].Options.Marker.Symbol = C.MarkerStyleValues.None;
                         break;
                 }
             }
+
+            this.PlotArea.DataSeries[index].ChartType = vType;
         }
 
         /// <summary>
@@ -4084,9 +4081,9 @@ namespace SpreadsheetLight.Charts
                         if (!WithMarkers) this.PlotArea.DataSeries[index].Options.Marker.Symbol = C.MarkerStyleValues.None;
                         break;
                 }
-
-                this.PlotArea.DataSeries[index].ChartType = vType;
             }
+
+            this.PlotArea.DataSeries[index].ChartType = vType;
         }
 
         /// <summary>
@@ -4095,7 +4092,7 @@ namespace SpreadsheetLight.Charts
         /// <returns>An SLGroupDataLabelOptions with theme information.</returns>
         public SLGroupDataLabelOptions CreateGroupDataLabelOptions()
         {
-            return new SLGroupDataLabelOptions(this.listThemeColors);
+            return new SLGroupDataLabelOptions(this.listThemeColors, this.ThrowExceptionsIfAny);
         }
 
         /// <summary>
@@ -4104,7 +4101,7 @@ namespace SpreadsheetLight.Charts
         /// <returns>An SLDataLabelOptions with theme information.</returns>
         public SLDataLabelOptions CreateDataLabelOptions()
         {
-            return new SLDataLabelOptions(this.listThemeColors);
+            return new SLDataLabelOptions(this.listThemeColors, this.ThrowExceptionsIfAny);
         }
 
         /// <summary>
@@ -4160,7 +4157,7 @@ namespace SpreadsheetLight.Charts
         /// <returns>An SLDataPointOptions with theme information.</returns>
         public SLDataPointOptions CreateDataPointOptions()
         {
-            return new SLDataPointOptions(this.listThemeColors);
+            return new SLDataPointOptions(this.listThemeColors, this.ThrowExceptionsIfAny);
         }
 
         /// <summary>
@@ -4262,7 +4259,7 @@ namespace SpreadsheetLight.Charts
                         }
                         this.Floor.Fill.BlipRelationshipID = chartp.GetIdOfPart(imgp);
                     }
-                    chart.Floor.ShapeProperties = this.Floor.ShapeProperties.ToCShapeProperties();
+                    chart.Floor.ShapeProperties = this.Floor.ShapeProperties.ToCShapeProperties(IsStylish);
                 }
 
                 chart.SideWall = new C.SideWall();

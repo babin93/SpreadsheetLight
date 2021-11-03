@@ -198,8 +198,8 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public bool NoMultiLevelLabels { get; set; }
 
-        internal SLTextAxis(List<System.Drawing.Color> ThemeColors, bool Date1904, bool IsStylish = false)
-            : base(ThemeColors, IsStylish)
+        internal SLTextAxis(List<System.Drawing.Color> ThemeColors, bool Date1904, bool IsStylish, bool ThrowExceptionsIfAny)
+            : base(ThemeColors, IsStylish, ThrowExceptionsIfAny)
         {
             this.Date1904 = Date1904;
 
@@ -244,7 +244,7 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
         // We have SetAsCategoryAxis() and SetAsDateAxis() because
@@ -392,7 +392,7 @@ namespace SpreadsheetLight.Charts
             this.OtherAxisCrossesAt = 0;
         }
 
-        internal C.CategoryAxis ToCategoryAxis(bool IsStylish = false)
+        internal C.CategoryAxis ToCategoryAxis(bool IsStylish)
         {
             C.CategoryAxis ca = new C.CategoryAxis();
             ca.AxisId = new C.AxisId() { Val = this.AxisId };
@@ -530,7 +530,7 @@ namespace SpreadsheetLight.Charts
             return ca;
         }
 
-        internal C.DateAxis ToDateAxis(bool IsStylish = false)
+        internal C.DateAxis ToDateAxis(bool IsStylish)
         {
             C.DateAxis da = new C.DateAxis();
             da.AxisId = new C.AxisId() { Val = this.AxisId };
@@ -676,7 +676,7 @@ namespace SpreadsheetLight.Charts
             return da;
         }
 
-        internal C.ValueAxis ToValueAxis(bool IsStylish = false)
+        internal C.ValueAxis ToValueAxis(bool IsStylish)
         {
             C.ValueAxis va = new C.ValueAxis();
             va.AxisId = new C.AxisId() { Val = this.AxisId };
@@ -824,7 +824,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLTextAxis Clone()
         {
-            SLTextAxis ta = new SLTextAxis(this.ShapeProperties.listThemeColors, this.Date1904);
+            SLTextAxis ta = new SLTextAxis(this.ShapeProperties.listThemeColors, this.Date1904, false, this.ShapeProperties.ThrowExceptionsIfAny);
             ta.Rotation = this.Rotation;
             ta.Vertical = this.Vertical;
             ta.Anchor = this.Anchor;

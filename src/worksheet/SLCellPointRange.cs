@@ -3,14 +3,39 @@ using System.Collections.Generic;
 
 namespace SpreadsheetLight
 {
-    internal struct SLCellPointRange
+    /// <summary>
+    /// This represents a cell reference range in numeric index form.
+    /// </summary>
+    public struct SLCellPointRange
     {
-        internal int StartRowIndex;
-        internal int StartColumnIndex;
-        internal int EndRowIndex;
-        internal int EndColumnIndex;
+        /// <summary>
+        /// Start row index.
+        /// </summary>
+        public int StartRowIndex;
 
-        internal SLCellPointRange(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex)
+        /// <summary>
+        /// Start column index.
+        /// </summary>
+        public int StartColumnIndex;
+
+        /// <summary>
+        /// End row index.
+        /// </summary>
+        public int EndRowIndex;
+
+        /// <summary>
+        /// End column index.
+        /// </summary>
+        public int EndColumnIndex;
+
+        /// <summary>
+        /// Initializes an instance of SLCellPointRange.
+        /// </summary>
+        /// <param name="StartRowIndex">The start row index.</param>
+        /// <param name="StartColumnIndex">The start column index.</param>
+        /// <param name="EndRowIndex">The end row index.</param>
+        /// <param name="EndColumnIndex">The end column index.</param>
+        public SLCellPointRange(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex)
         {
             this.StartRowIndex = StartRowIndex;
             this.StartColumnIndex = StartColumnIndex;

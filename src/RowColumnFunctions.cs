@@ -244,7 +244,7 @@ namespace SpreadsheetLight
                                     if (bStrike) drawstyle |= System.Drawing.FontStyle.Strikeout;
                                     if (bUnderline) drawstyle |= System.Drawing.FontStyle.Underline;
 
-                                    ftUsableFont = SLTool.GetUsableNormalFont(sFontName, fFontSize, drawstyle);
+                                    ftUsableFont = SLTool.GetUsableNormalFont(sFontName, fFontSize, drawstyle, gbThrowExceptionsIfAny);
 
                                     dictAutoFitFontCache[iStyleIndex] = (System.Drawing.Font)ftUsableFont.Clone();
                                 }
@@ -257,9 +257,9 @@ namespace SpreadsheetLight
                                 szf = SLTool.MeasureText(bm, g, "0123456789", ftUsableFont);
                                 fMinimumHeight = Math.Min(szf.Height, fDefaultRowHeight);
 
-                                if (fRowHeight > fMinimumHeight)
+                                if (fRowHeight < fMinimumHeight)
                                 {
-                                    rp.Height = fRowHeight;
+                                    rp.Height = fMinimumHeight;
                                     rp.CustomHeight = false;
                                     slws.RowProperties[pixlenpt] = rp.Clone();
                                 }
@@ -392,6 +392,22 @@ namespace SpreadsheetLight
         }
 
         /// <summary>
+        /// Get the group level of the row.
+        /// </summary>
+        /// <param name="RowIndex">The row index.</param>
+        /// <returns>The group level (between 0 and 7, both inclusive). The default is 0.</returns>
+        public int GetRowGroupLevel(int RowIndex)
+        {
+            int iGroupLevel = 0;
+            if (slws.RowProperties.ContainsKey(RowIndex))
+            {
+                iGroupLevel = slws.RowProperties[RowIndex].OutlineLevel;
+            }
+
+            return iGroupLevel;
+        }
+
+        /// <summary>
         /// Group rows.
         /// </summary>
         /// <param name="StartRowIndex">The row index of the start row.</param>
@@ -411,7 +427,7 @@ namespace SpreadsheetLight
             }
 
             // I haven't personally checked this, but there's a collapsing -/+ box on the row
-            // just below the grouped rows. This implies the very very last row that can be
+            // just below the grouped rows. This implies the very last row that can be
             // grouped is the (row limit - 1)th row, because (row limit)th row will have that
             // collapsing box.
             if (iEndRowIndex >= SLConstants.RowLimit) iEndRowIndex = SLConstants.RowLimit - 1;
@@ -427,8 +443,8 @@ namespace SpreadsheetLight
                     if (slws.RowProperties.ContainsKey(i))
                     {
                         rp = slws.RowProperties[i];
-                        // Excel supports only 8 levels
-                        if (rp.OutlineLevel < 8) ++rp.OutlineLevel;
+                        // Excel supports only levels 0 to 7
+                        if (rp.OutlineLevel < 7) ++rp.OutlineLevel;
                         slws.RowProperties[i] = rp.Clone();
                     }
                     else
@@ -901,6 +917,8 @@ namespace SpreadsheetLight
                 && AnchorRowIndex >= 1 && AnchorRowIndex <= SLConstants.RowLimit
                 && iStartRowIndex != AnchorRowIndex)
             {
+                this.FlattenAllSharedCellFormula();
+
                 result = true;
 
                 int diff = AnchorRowIndex - iStartRowIndex;
@@ -934,27 +952,36 @@ namespace SpreadsheetLight
                     slws.RowProperties[key] = rows[key].Clone();
                 }
 
-                Dictionary<SLCellPoint, SLCell> cells = new Dictionary<SLCellPoint, SLCell>();
-                List<SLCellPoint> listCellKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                foreach (SLCellPoint pt in listCellKeys)
+                SLCellWarehouse cells = new SLCellWarehouse();
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                List<int> listColumnKeys;
+                foreach (int rowkey in listRowKeys)
                 {
-                    if (pt.RowIndex >= iStartRowIndex && pt.RowIndex <= iEndRowIndex)
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
                     {
-                        cells[new SLCellPoint(pt.RowIndex + diff, pt.ColumnIndex)] = slws.Cells[pt].Clone();
-                        if (ToCut)
+                        if (rowkey >= iStartRowIndex && rowkey <= iEndRowIndex)
                         {
-                            slws.Cells.Remove(pt);
+                            cells.SetValue(rowkey + diff, colkey, slws.CellWarehouse.Cells[rowkey][colkey]);
+                            if (ToCut)
+                            {
+                                slws.CellWarehouse.Remove(rowkey, colkey);
+                            }
                         }
                     }
                 }
 
-                listCellKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                foreach (SLCellPoint pt in listCellKeys)
+                listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                foreach (int rowkey in listRowKeys)
                 {
-                    // any cell within destination "paste" operation is taken out
-                    if (pt.RowIndex >= AnchorRowIndex && pt.RowIndex <= AnchorEndRowIndex)
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
                     {
-                        slws.Cells.Remove(pt);
+                        // any cell within destination "paste" operation is taken out
+                        if (rowkey >= AnchorRowIndex && rowkey <= AnchorEndRowIndex)
+                        {
+                            slws.CellWarehouse.Remove(rowkey, colkey);
+                        }
                     }
                 }
 
@@ -962,11 +989,17 @@ namespace SpreadsheetLight
                 if (AnchorRowIndex <= iStartRowIndex) iNumberOfRows = -iNumberOfRows;
 
                 SLCell c;
-                foreach (var key in cells.Keys)
+                listRowKeys = cells.Cells.Keys.ToList<int>();
+                foreach (int rowkey in listRowKeys)
                 {
-                    c = cells[key];
-                    this.ProcessCellFormulaDelta(ref c, AnchorRowIndex, iNumberOfRows, -1, 0);
-                    slws.Cells[key] = c;
+                    listColumnKeys = cells.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
+                    {
+                        c = cells.Cells[rowkey][colkey];
+                        //this.ProcessCellFormulaDelta(ref c, AnchorRowIndex, iNumberOfRows, -1, 0);
+                        this.ProcessCellFormulaDelta(ref c, false, iStartRowIndex, 0, AnchorRowIndex, 0, false, false, false, 0, 0);
+                        slws.CellWarehouse.SetValue(rowkey, colkey, c);
+                    }
                 }
 
                 // TODO: tables!
@@ -991,30 +1024,33 @@ namespace SpreadsheetLight
                 #region Calculation cells
                 if (slwb.CalculationCells.Count > 0)
                 {
-                    List<int> listToDelete = new List<int>();
-                    int iRowLimit = AnchorRowIndex + iStartRowIndex - iEndRowIndex;
-                    for (i = 0; i < slwb.CalculationCells.Count; ++i)
-                    {
-                        if (slwb.CalculationCells[i].SheetId == giSelectedWorksheetID)
-                        {
-                            if (ToCut && slwb.CalculationCells[i].RowIndex >= iStartRowIndex && slwb.CalculationCells[i].RowIndex <= iEndRowIndex)
-                            {
-                                // just remove because recalculation of cell references is too complicated...
-                                if (!listToDelete.Contains(i)) listToDelete.Add(i);
-                            }
+                    // I don't know enough to fiddle with calculation chains. So I'm going to ignore it.
+                    slwb.CalculationCells.Clear();
 
-                            if (slwb.CalculationCells[i].RowIndex >= AnchorRowIndex && slwb.CalculationCells[i].RowIndex <= iRowLimit)
-                            {
-                                // existing calculation cell lies within destination "paste" operation
-                                if (!listToDelete.Contains(i)) listToDelete.Add(i);
-                            }
-                        }
-                    }
+                    //List<int> listToDelete = new List<int>();
+                    //int iRowLimit = AnchorRowIndex + iStartRowIndex - iEndRowIndex;
+                    //for (i = 0; i < slwb.CalculationCells.Count; ++i)
+                    //{
+                    //    if (slwb.CalculationCells[i].SheetId == giSelectedWorksheetID)
+                    //    {
+                    //        if (ToCut && slwb.CalculationCells[i].RowIndex >= iStartRowIndex && slwb.CalculationCells[i].RowIndex <= iEndRowIndex)
+                    //        {
+                    //            // just remove because recalculation of cell references is too complicated...
+                    //            if (!listToDelete.Contains(i)) listToDelete.Add(i);
+                    //        }
 
-                    for (i = listToDelete.Count - 1; i >= 0; --i)
-                    {
-                        slwb.CalculationCells.RemoveAt(listToDelete[i]);
-                    }
+                    //        if (slwb.CalculationCells[i].RowIndex >= AnchorRowIndex && slwb.CalculationCells[i].RowIndex <= iRowLimit)
+                    //        {
+                    //            // existing calculation cell lies within destination "paste" operation
+                    //            if (!listToDelete.Contains(i)) listToDelete.Add(i);
+                    //        }
+                    //    }
+                    //}
+
+                    //for (i = listToDelete.Count - 1; i >= 0; --i)
+                    //{
+                    //    slwb.CalculationCells.RemoveAt(listToDelete[i]);
+                    //}
                 }
                 #endregion
 
@@ -1038,6 +1074,8 @@ namespace SpreadsheetLight
             bool result = false;
             if (StartRowIndex >= 1 && StartRowIndex <= SLConstants.RowLimit)
             {
+                this.FlattenAllSharedCellFormula();
+
                 result = true;
                 int i = 0, iNewIndex = 0;
 
@@ -1105,7 +1143,7 @@ namespace SpreadsheetLight
                     index = listRowIndex[i];
                     if (index >= StartRowIndex)
                     {
-                        rp = slws.RowProperties[index];
+                        rp = slws.RowProperties[index].Clone();
                         slws.RowProperties.Remove(index);
                         iNewIndex = index + NumberOfRows;
                         // if the new row is below the bottom limit of the worksheet,
@@ -1125,40 +1163,46 @@ namespace SpreadsheetLight
                 #endregion
 
                 #region Cell data
-                List<SLCellPoint> listCellRefKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                // this sorting in descending order is crucial!
-                listCellRefKeys.Sort(new SLCellReferencePointComparer());
-                listCellRefKeys.Reverse();
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                // 7 Jan 2017: need to sort descending. Similar logic to the RowProperties above.
+                listRowKeys.Sort();
+                listRowKeys.Reverse();
+                List<int> listColumnKeys;
 
                 SLCell c;
-                SLCellPoint pt;
-                for (i = 0; i < listCellRefKeys.Count; ++i)
+                foreach (int rowkey in listRowKeys)
                 {
-                    pt = listCellRefKeys[i];
-                    c = slws.Cells[pt];
-                    this.ProcessCellFormulaDelta(ref c, StartRowIndex, NumberOfRows, -1, 0);
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
+                    {
+                        c = slws.CellWarehouse.Cells[rowkey][colkey].Clone();
+                        //this.ProcessCellFormulaDelta(ref c, StartRowIndex, NumberOfRows, -1, 0);
+                        //this.ProcessCellFormulaDelta(ref c, false, StartRowIndex, 0, StartRowIndex + NumberOfRows, 0);
+                        this.ProcessCellFormulaDelta(ref c, false, StartRowIndex, 0, StartRowIndex + NumberOfRows, 0, true, true, true, 0, 0);
 
-                    if (pt.RowIndex >= StartRowIndex)
-                    {
-                        slws.Cells.Remove(pt);
-                        iNewIndex = pt.RowIndex + NumberOfRows;
-                        if (iNewIndex <= SLConstants.RowLimit)
+                        if (rowkey >= StartRowIndex)
                         {
-                            slws.Cells[new SLCellPoint(iNewIndex, pt.ColumnIndex)] = c;
+                            slws.CellWarehouse.Remove(rowkey, colkey);
+                            iNewIndex = rowkey + NumberOfRows;
+                            if (iNewIndex <= SLConstants.RowLimit)
+                            {
+                                slws.CellWarehouse.SetValue(iNewIndex, colkey, c);
+                            }
                         }
-                    }
-                    else
-                    {
-                        slws.Cells[pt] = c;
+                        else
+                        {
+                            slws.CellWarehouse.SetValue(rowkey, colkey, c);
+                        }
                     }
                 }
 
                 #region Cell comments
-                listCellRefKeys = slws.Comments.Keys.ToList<SLCellPoint>();
+                List<SLCellPoint> listCellRefKeys = slws.Comments.Keys.ToList<SLCellPoint>();
                 // this sorting in descending order is crucial!
                 listCellRefKeys.Sort(new SLCellReferencePointComparer());
                 listCellRefKeys.Reverse();
 
+                SLCellPoint pt;
                 SLComment comm;
                 for (i = 0; i < listCellRefKeys.Count; ++i)
                 {
@@ -1327,31 +1371,41 @@ namespace SpreadsheetLight
                 #region Calculation chain
                 if (slwb.CalculationCells.Count > 0)
                 {
-                    foreach (SLCalculationCell cc in slwb.CalculationCells)
-                    {
-                        if (cc.SheetId == giSelectedWorksheetID)
-                        {
-                            iRowIndex = cc.RowIndex;
-                            // don't need this but assign something anyway...
-                            iRowIndex2 = SLConstants.RowLimit;
+                    // I don't know enough to fiddle with calculation chains. So I'm going to ignore it.
+                    slwb.CalculationCells.Clear();
 
-                            this.AddRowColumnIndexDelta(StartRowIndex, NumberOfRows, true, ref iRowIndex, ref iRowIndex2);
-                            cc.RowIndex = iRowIndex;
-                        }
-                    }
+                    //foreach (SLCalculationCell cc in slwb.CalculationCells)
+                    //{
+                    //    if (cc.SheetId == giSelectedWorksheetID)
+                    //    {
+                    //        iRowIndex = cc.RowIndex;
+                    //        // don't need this but assign something anyway...
+                    //        iRowIndex2 = SLConstants.RowLimit;
+
+                    //        this.AddRowColumnIndexDelta(StartRowIndex, NumberOfRows, true, ref iRowIndex, ref iRowIndex2);
+                    //        cc.RowIndex = iRowIndex;
+                    //    }
+                    //}
                 }
                 #endregion
 
                 #region Defined names
                 if (slwb.DefinedNames.Count > 0)
                 {
-                    string sDefinedNameText = string.Empty;
+                    //string sDefinedNameText = string.Empty;
+                    //foreach (SLDefinedName d in slwb.DefinedNames)
+                    //{
+                    //    sDefinedNameText = d.Text;
+                    //    sDefinedNameText = AddDeleteCellFormulaDelta(sDefinedNameText, StartRowIndex, NumberOfRows, -1, 0);
+                    //    sDefinedNameText = AddDeleteDefinedNameRowColumnRangeDelta(sDefinedNameText, true, StartRowIndex, NumberOfRows);
+                    //    d.Text = sDefinedNameText;
+                    //}
+
+                    // not doing anything with this but using it to pass to the function
+                    bool bHasError = false;
                     foreach (SLDefinedName d in slwb.DefinedNames)
                     {
-                        sDefinedNameText = d.Text;
-                        sDefinedNameText = AddDeleteCellFormulaDelta(sDefinedNameText, StartRowIndex, NumberOfRows, -1, 0);
-                        sDefinedNameText = AddDeleteDefinedNameRowColumnRangeDelta(sDefinedNameText, true, StartRowIndex, NumberOfRows);
-                        d.Text = sDefinedNameText;
+                        d.Text = AdjustCellFormulaDelta(d.Text, false, StartRowIndex, 0, StartRowIndex + NumberOfRows, 0, true, false, false, false, 0, 0, out bHasError);
                     }
                 }
                 #endregion
@@ -1417,6 +1471,8 @@ namespace SpreadsheetLight
             bool result = false;
             if (StartRowIndex >= 1 && StartRowIndex <= SLConstants.RowLimit)
             {
+                this.FlattenAllSharedCellFormula();
+
                 result = true;
                 int i = 0, iNewIndex = 0;
                 int iEndRowIndex = StartRowIndex + NumberOfRows - 1;
@@ -1614,39 +1670,46 @@ namespace SpreadsheetLight
                 #endregion
 
                 #region Cell data
-                List<SLCellPoint> listCellRefKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                // this sorting in ascending order is crucial!
-                listCellRefKeys.Sort(new SLCellReferencePointComparer());
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                // 2 April 2017: Need to sort or the row keys are "random" (depending on
+                // how the OS assign memory and order and such)
+                // This made the rows "random"
+                listRowKeys.Sort();
+                List<int> listColumnKeys;
 
                 SLCell c;
-                SLCellPoint pt;
-                for (i = 0; i < listCellRefKeys.Count; ++i)
+                foreach (int rowkey in listRowKeys)
                 {
-                    pt = listCellRefKeys[i];
-                    c = slws.Cells[pt];
-                    this.ProcessCellFormulaDelta(ref c, StartRowIndex, -NumberOfRows, -1, 0);
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    listColumnKeys.Sort();
+                    foreach (int colkey in listColumnKeys)
+                    {
+                        c = slws.CellWarehouse.Cells[rowkey][colkey].Clone();
 
-                    if (StartRowIndex <= pt.RowIndex && pt.RowIndex <= iEndRowIndex)
-                    {
-                        slws.Cells.Remove(pt);
-                    }
-                    else if (pt.RowIndex > iEndRowIndex)
-                    {
-                        slws.Cells.Remove(pt);
-                        iNewIndex = pt.RowIndex - iNumberOfRows;
-                        slws.Cells[new SLCellPoint(iNewIndex, pt.ColumnIndex)] = c;
-                    }
-                    else
-                    {
-                        slws.Cells[pt] = c;
+                        if (StartRowIndex <= rowkey && rowkey <= iEndRowIndex)
+                        {
+                            slws.CellWarehouse.Remove(rowkey, colkey);
+                        }
+                        else if (rowkey > iEndRowIndex)
+                        {
+                            slws.CellWarehouse.Remove(rowkey, colkey);
+                            iNewIndex = rowkey - iNumberOfRows;
+                            this.ProcessCellFormulaDelta(ref c, false, StartRowIndex, 0, StartRowIndex - iNumberOfRows, 0, true, false, true, StartRowIndex, iEndRowIndex);
+                            slws.CellWarehouse.SetValue(iNewIndex, colkey, c);
+                        }
+                        //else
+                        //{
+                        //    slws.CellWarehouse.SetValue(rowkey, colkey, c);
+                        //}
                     }
                 }
 
                 #region Cell comments
-                listCellRefKeys = slws.Comments.Keys.ToList<SLCellPoint>();
+                List<SLCellPoint> listCellRefKeys = slws.Comments.Keys.ToList<SLCellPoint>();
                 // this sorting in ascending order is crucial!
                 listCellRefKeys.Sort(new SLCellReferencePointComparer());
 
+                SLCellPoint pt;
                 SLComment comm;
                 for (i = 0; i < listCellRefKeys.Count; ++i)
                 {
@@ -2027,41 +2090,51 @@ namespace SpreadsheetLight
                 #region Calculation chain
                 if (slwb.CalculationCells.Count > 0)
                 {
-                    List<int> listToDelete = new List<int>();
-                    for (i = 0; i < slwb.CalculationCells.Count; ++i)
-                    {
-                        if (slwb.CalculationCells[i].SheetId == giSelectedWorksheetID)
-                        {
-                            if (StartRowIndex <= slwb.CalculationCells[i].RowIndex && slwb.CalculationCells[i].RowIndex <= iEndRowIndex)
-                            {
-                                listToDelete.Add(i);
-                            }
-                            else if (iEndRowIndex < slwb.CalculationCells[i].RowIndex)
-                            {
-                                slwb.CalculationCells[i].RowIndex -= iNumberOfRows;
-                            }
-                        }
-                    }
+                    // I don't know enough to fiddle with calculation chains. So I'm going to ignore it.
+                    slwb.CalculationCells.Clear();
 
-                    // start from the back because we're deleting elements and we don't want
-                    // the indices to get messed up.
-                    for (i = listToDelete.Count - 1; i >= 0; --i)
-                    {
-                        slwb.CalculationCells.RemoveAt(listToDelete[i]);
-                    }
+                    //List<int> listToDelete = new List<int>();
+                    //for (i = 0; i < slwb.CalculationCells.Count; ++i)
+                    //{
+                    //    if (slwb.CalculationCells[i].SheetId == giSelectedWorksheetID)
+                    //    {
+                    //        if (StartRowIndex <= slwb.CalculationCells[i].RowIndex && slwb.CalculationCells[i].RowIndex <= iEndRowIndex)
+                    //        {
+                    //            listToDelete.Add(i);
+                    //        }
+                    //        else if (iEndRowIndex < slwb.CalculationCells[i].RowIndex)
+                    //        {
+                    //            slwb.CalculationCells[i].RowIndex -= iNumberOfRows;
+                    //        }
+                    //    }
+                    //}
+
+                    //// start from the back because we're deleting elements and we don't want
+                    //// the indices to get messed up.
+                    //for (i = listToDelete.Count - 1; i >= 0; --i)
+                    //{
+                    //    slwb.CalculationCells.RemoveAt(listToDelete[i]);
+                    //}
                 }
                 #endregion
 
                 #region Defined names
                 if (slwb.DefinedNames.Count > 0)
                 {
-                    string sDefinedNameText = string.Empty;
+                    //string sDefinedNameText = string.Empty;
+                    //foreach (SLDefinedName d in slwb.DefinedNames)
+                    //{
+                    //    sDefinedNameText = d.Text;
+                    //    sDefinedNameText = AddDeleteCellFormulaDelta(sDefinedNameText, StartRowIndex, -NumberOfRows, -1, 0);
+                    //    sDefinedNameText = AddDeleteDefinedNameRowColumnRangeDelta(sDefinedNameText, true, StartRowIndex, -NumberOfRows);
+                    //    d.Text = sDefinedNameText;
+                    //}
+
+                    // not doing anything with this but using it to pass to the function
+                    bool bHasError = false;
                     foreach (SLDefinedName d in slwb.DefinedNames)
                     {
-                        sDefinedNameText = d.Text;
-                        sDefinedNameText = AddDeleteCellFormulaDelta(sDefinedNameText, StartRowIndex, -NumberOfRows, -1, 0);
-                        sDefinedNameText = AddDeleteDefinedNameRowColumnRangeDelta(sDefinedNameText, true, StartRowIndex, -NumberOfRows);
-                        d.Text = sDefinedNameText;
+                        d.Text = AdjustCellFormulaDelta(d.Text, false, StartRowIndex, 0, StartRowIndex - NumberOfRows, 0, true, true, false, true, StartRowIndex, iEndRowIndex, out bHasError);
                     }
                 }
                 #endregion
@@ -2152,12 +2225,18 @@ namespace SpreadsheetLight
             if (iEndRowIndex > SLConstants.RowLimit) iEndRowIndex = SLConstants.RowLimit;
 
             bool result = false;
-            List<SLCellPoint> list = slws.Cells.Keys.ToList<SLCellPoint>();
-            foreach (SLCellPoint pt in list)
+            List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+            List<int> listColumnKeys;
+            foreach (int rowkey in listRowKeys)
             {
-                if (iStartRowIndex <= pt.RowIndex && pt.RowIndex <= iEndRowIndex)
+                if (iStartRowIndex <= rowkey && rowkey <= iEndRowIndex)
                 {
-                    this.ClearCellContentData(pt);
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
+                    {
+                        this.ClearCellContentData(rowkey, colkey);
+                        result = true;
+                    }
                 }
             }
 
@@ -2902,6 +2981,8 @@ namespace SpreadsheetLight
                 && AnchorColumnIndex >= 1 && AnchorColumnIndex <= SLConstants.ColumnLimit
                 && iStartColumnIndex != AnchorColumnIndex)
             {
+                this.FlattenAllSharedCellFormula();
+
                 result = true;
 
                 int diff = AnchorColumnIndex - iStartColumnIndex;
@@ -2935,27 +3016,36 @@ namespace SpreadsheetLight
                     slws.ColumnProperties[key] = cols[key].Clone();
                 }
 
-                Dictionary<SLCellPoint, SLCell> cells = new Dictionary<SLCellPoint, SLCell>();
-                List<SLCellPoint> listCellKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                foreach (SLCellPoint pt in listCellKeys)
+                SLCellWarehouse cells = new SLCellWarehouse();
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                List<int> listColumnKeys;
+                foreach (int rowkey in listRowKeys)
                 {
-                    if (pt.ColumnIndex >= iStartColumnIndex && pt.ColumnIndex <= iEndColumnIndex)
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
                     {
-                        cells[new SLCellPoint(pt.RowIndex, pt.ColumnIndex + diff)] = slws.Cells[pt].Clone();
-                        if (ToCut)
+                        if (colkey >= iStartColumnIndex && colkey <= iEndColumnIndex)
                         {
-                            slws.Cells.Remove(pt);
+                            cells.SetValue(rowkey, colkey + diff, slws.CellWarehouse.Cells[rowkey][colkey]);
+                            if (ToCut)
+                            {
+                                slws.CellWarehouse.Remove(rowkey, colkey);
+                            }
                         }
                     }
                 }
 
-                listCellKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                foreach (SLCellPoint pt in listCellKeys)
+                listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                foreach (int rowkey in listRowKeys)
                 {
-                    // any cell within destination "paste" operation is taken out
-                    if (pt.ColumnIndex >= AnchorColumnIndex && pt.ColumnIndex <= AnchorEndColumnIndex)
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
                     {
-                        slws.Cells.Remove(pt);
+                        // any cell within destination "paste" operation is taken out
+                        if (colkey >= AnchorColumnIndex && colkey <= AnchorEndColumnIndex)
+                        {
+                            slws.CellWarehouse.Remove(rowkey, colkey);
+                        }
                     }
                 }
 
@@ -2963,11 +3053,17 @@ namespace SpreadsheetLight
                 if (AnchorColumnIndex <= iStartColumnIndex) iNumberOfColumns = -iNumberOfColumns;
 
                 SLCell c;
-                foreach (var key in cells.Keys)
+                listRowKeys = cells.Cells.Keys.ToList<int>();
+                foreach (int rowkey in listRowKeys)
                 {
-                    c = cells[key];
-                    this.ProcessCellFormulaDelta(ref c, -1, 0, AnchorColumnIndex, iNumberOfColumns);
-                    slws.Cells[key] = c;
+                    listColumnKeys = cells.Cells[rowkey].Keys.ToList<int>();
+                    foreach (int colkey in listColumnKeys)
+                    {
+                        c = cells.Cells[rowkey][colkey].Clone();
+                        //this.ProcessCellFormulaDelta(ref c, -1, 0, AnchorColumnIndex, iNumberOfColumns);
+                        this.ProcessCellFormulaDelta(ref c, false, 0, StartColumnIndex, 0, StartColumnIndex + iNumberOfColumns, false, false, false, 0, 0);
+                        slws.CellWarehouse.SetValue(rowkey, colkey, c);
+                    }
                 }
 
                 // TODO: tables!
@@ -2992,30 +3088,33 @@ namespace SpreadsheetLight
                 #region Calculation cells
                 if (slwb.CalculationCells.Count > 0)
                 {
-                    List<int> listToDelete = new List<int>();
-                    int iColumnLimit = AnchorColumnIndex + iStartColumnIndex - iEndColumnIndex;
-                    for (i = 0; i < slwb.CalculationCells.Count; ++i)
-                    {
-                        if (slwb.CalculationCells[i].SheetId == giSelectedWorksheetID)
-                        {
-                            if (ToCut && slwb.CalculationCells[i].ColumnIndex >= iStartColumnIndex && slwb.CalculationCells[i].ColumnIndex <= iEndColumnIndex)
-                            {
-                                // just remove because recalculation of cell references is too complicated...
-                                if (!listToDelete.Contains(i)) listToDelete.Add(i);
-                            }
+                    // I don't know enough to fiddle with calculation chains. So I'm going to ignore it.
+                    slwb.CalculationCells.Clear();
 
-                            if (slwb.CalculationCells[i].ColumnIndex >= AnchorColumnIndex && slwb.CalculationCells[i].ColumnIndex <= iColumnLimit)
-                            {
-                                // existing calculation cell lies within destination "paste" operation
-                                if (!listToDelete.Contains(i)) listToDelete.Add(i);
-                            }
-                        }
-                    }
+                    //List<int> listToDelete = new List<int>();
+                    //int iColumnLimit = AnchorColumnIndex + iStartColumnIndex - iEndColumnIndex;
+                    //for (i = 0; i < slwb.CalculationCells.Count; ++i)
+                    //{
+                    //    if (slwb.CalculationCells[i].SheetId == giSelectedWorksheetID)
+                    //    {
+                    //        if (ToCut && slwb.CalculationCells[i].ColumnIndex >= iStartColumnIndex && slwb.CalculationCells[i].ColumnIndex <= iEndColumnIndex)
+                    //        {
+                    //            // just remove because recalculation of cell references is too complicated...
+                    //            if (!listToDelete.Contains(i)) listToDelete.Add(i);
+                    //        }
 
-                    for (i = listToDelete.Count - 1; i >= 0; --i)
-                    {
-                        slwb.CalculationCells.RemoveAt(listToDelete[i]);
-                    }
+                    //        if (slwb.CalculationCells[i].ColumnIndex >= AnchorColumnIndex && slwb.CalculationCells[i].ColumnIndex <= iColumnLimit)
+                    //        {
+                    //            // existing calculation cell lies within destination "paste" operation
+                    //            if (!listToDelete.Contains(i)) listToDelete.Add(i);
+                    //        }
+                    //    }
+                    //}
+
+                    //for (i = listToDelete.Count - 1; i >= 0; --i)
+                    //{
+                    //    slwb.CalculationCells.RemoveAt(listToDelete[i]);
+                    //}
                 }
                 #endregion
 
@@ -3024,6 +3123,35 @@ namespace SpreadsheetLight
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Get the group level of the column.
+        /// </summary>
+        /// <param name="ColumnName">The column name, such as "A".</param>
+        /// <returns>The group level (between 0 and 7, both inclusive). The default is 0.</returns>
+        public int GetColumnGroupLevel(string ColumnName)
+        {
+            int iColumnIndex = -1;
+            iColumnIndex = SLTool.ToColumnIndex(ColumnName);
+
+            return GetColumnGroupLevel(iColumnIndex);
+        }
+
+        /// <summary>
+        /// Get the group level of the column.
+        /// </summary>
+        /// <param name="ColumnIndex">The column index.</param>
+        /// <returns>The group level (between 0 and 7, both inclusive). The default is 0.</returns>
+        public int GetColumnGroupLevel(int ColumnIndex)
+        {
+            int iGroupLevel = 0;
+            if (slws.ColumnProperties.ContainsKey(ColumnIndex))
+            {
+                iGroupLevel = slws.ColumnProperties[ColumnIndex].OutlineLevel;
+            }
+
+            return iGroupLevel;
         }
 
         /// <summary>
@@ -3077,8 +3205,8 @@ namespace SpreadsheetLight
                     if (slws.ColumnProperties.ContainsKey(i))
                     {
                         cp = slws.ColumnProperties[i];
-                        // Excel supports only 8 levels
-                        if (cp.OutlineLevel < 8) ++cp.OutlineLevel;
+                        // Excel supports only levels 0 to 7
+                        if (cp.OutlineLevel < 7) ++cp.OutlineLevel;
                         slws.ColumnProperties[i] = cp.Clone();
                     }
                     else
@@ -3329,6 +3457,8 @@ namespace SpreadsheetLight
             bool result = false;
             if (StartColumnIndex >= 1 && StartColumnIndex <= SLConstants.ColumnLimit)
             {
+                this.FlattenAllSharedCellFormula();
+
                 result = true;
                 int i = 0, iNewIndex = 0;
 
@@ -3373,40 +3503,50 @@ namespace SpreadsheetLight
                 #endregion
 
                 #region Cell data
-                List<SLCellPoint> listCellRefKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                // this sorting in descending order is crucial!
-                listCellRefKeys.Sort(new SLCellReferencePointComparer());
-                listCellRefKeys.Reverse();
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                // 2 April 2017: Need to sort or the row keys are "random" (depending on
+                // how the OS assign memory and order and such)
+                // This made the rows "random"
+                listRowKeys.Sort();
+                List<int> listColumnKeys;
 
                 SLCell c;
-                SLCellPoint pt;
-                for (i = 0; i < listCellRefKeys.Count; ++i)
+                foreach (int rowkey in listRowKeys)
                 {
-                    pt = listCellRefKeys[i];
-                    c = slws.Cells[pt];
-                    this.ProcessCellFormulaDelta(ref c, -1, 0, StartColumnIndex, NumberOfColumns);
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    listColumnKeys.Sort();
+                    // 5 July 2019: Need to reverse order so that columns are inserted correctly
+                    // (thanks Azamat S. !)
+                    listColumnKeys.Reverse();
+                    foreach (int colkey in listColumnKeys)
+                    {
+                        c = slws.CellWarehouse.Cells[rowkey][colkey].Clone();
+                        //this.ProcessCellFormulaDelta(ref c, -1, 0, StartColumnIndex, NumberOfColumns);
+                        this.ProcessCellFormulaDelta(ref c, false, 0, StartColumnIndex, 0, StartColumnIndex + NumberOfColumns, true, true, false, 0, 0);
 
-                    if (pt.ColumnIndex >= StartColumnIndex)
-                    {
-                        slws.Cells.Remove(pt);
-                        iNewIndex = pt.ColumnIndex + NumberOfColumns;
-                        if (iNewIndex <= SLConstants.ColumnLimit)
+                        if (colkey >= StartColumnIndex)
                         {
-                            slws.Cells[new SLCellPoint(pt.RowIndex, iNewIndex)] = c;
+                            slws.CellWarehouse.Remove(rowkey, colkey);
+                            iNewIndex = colkey + NumberOfColumns;
+                            if (iNewIndex <= SLConstants.ColumnLimit)
+                            {
+                                slws.CellWarehouse.SetValue(rowkey, iNewIndex, c);
+                            }
                         }
-                    }
-                    else
-                    {
-                        slws.Cells[pt] = c;
+                        else
+                        {
+                            slws.CellWarehouse.SetValue(rowkey, colkey, c);
+                        }
                     }
                 }
 
                 #region Cell comments
-                listCellRefKeys = slws.Comments.Keys.ToList<SLCellPoint>();
+                List<SLCellPoint> listCellRefKeys = slws.Comments.Keys.ToList<SLCellPoint>();
                 // this sorting in descending order is crucial!
                 listCellRefKeys.Sort(new SLCellReferencePointComparer());
                 listCellRefKeys.Reverse();
 
+                SLCellPoint pt;
                 SLComment comm;
                 for (i = 0; i < listCellRefKeys.Count; ++i)
                 {
@@ -3676,16 +3816,54 @@ namespace SpreadsheetLight
                 #region Calculation chain
                 if (slwb.CalculationCells.Count > 0)
                 {
-                    foreach (SLCalculationCell cc in slwb.CalculationCells)
-                    {
-                        if (cc.SheetId == giSelectedWorksheetID)
-                        {
-                            iColumnIndex = cc.ColumnIndex;
-                            // don't need this but assign something anyway...
-                            iColumnIndex2 = SLConstants.ColumnLimit;
+                    // I don't know enough to fiddle with calculation chains. So I'm going to ignore it.
+                    slwb.CalculationCells.Clear();
 
+                    //foreach (SLCalculationCell cc in slwb.CalculationCells)
+                    //{
+                    //    if (cc.SheetId == giSelectedWorksheetID)
+                    //    {
+                    //        iColumnIndex = cc.ColumnIndex;
+                    //        // don't need this but assign something anyway...
+                    //        iColumnIndex2 = SLConstants.ColumnLimit;
+
+                    //        this.AddRowColumnIndexDelta(StartColumnIndex, NumberOfColumns, false, ref iColumnIndex, ref iColumnIndex2);
+                    //        cc.ColumnIndex = iColumnIndex;
+                    //    }
+                    //}
+                }
+                #endregion
+
+                #region Shared formulas
+                if (slws.SharedCellFormulas.Count > 0)
+                {
+                    SLSharedCellFormula scf;
+                    bool bToDelete;
+                    List<uint> scfkeys = slws.SharedCellFormulas.Keys.ToList<uint>();
+                    for (i = scfkeys.Count - 1; i >= 0; --i)
+                    {
+                        scf = slws.SharedCellFormulas[scfkeys[i]];
+                        bToDelete = false;
+                        // start from the end because we might be deleting
+                        for (index = scf.Reference.Count - 1; index >= 0; --index)
+                        {
+                            iColumnIndex = scf.Reference[index].StartColumnIndex;
+                            iColumnIndex2 = scf.Reference[index].EndColumnIndex;
                             this.AddRowColumnIndexDelta(StartColumnIndex, NumberOfColumns, false, ref iColumnIndex, ref iColumnIndex2);
-                            cc.ColumnIndex = iColumnIndex;
+                            if (iColumnIndex < 1 || iColumnIndex > SLConstants.ColumnLimit || iColumnIndex2 < 1 || iColumnIndex2 > SLConstants.ColumnLimit)
+                            {
+                                bToDelete = true;
+                                break;
+                            }
+
+                            scf.Reference[index] = new SLCellPointRange(
+                                scf.Reference[index].StartRowIndex, iColumnIndex,
+                                scf.Reference[index].EndRowIndex, iColumnIndex2);
+                        }
+
+                        if (bToDelete)
+                        {
+                            slws.SharedCellFormulas.Remove(scfkeys[i]);
                         }
                     }
                 }
@@ -3694,13 +3872,20 @@ namespace SpreadsheetLight
                 #region Defined names
                 if (slwb.DefinedNames.Count > 0)
                 {
-                    string sDefinedNameText = string.Empty;
+                    //string sDefinedNameText = string.Empty;
+                    //foreach (SLDefinedName d in slwb.DefinedNames)
+                    //{
+                    //    sDefinedNameText = d.Text;
+                    //    sDefinedNameText = AddDeleteCellFormulaDelta(sDefinedNameText, -1, 0, StartColumnIndex, NumberOfColumns);
+                    //    sDefinedNameText = AddDeleteDefinedNameRowColumnRangeDelta(sDefinedNameText, false, StartColumnIndex, NumberOfColumns);
+                    //    d.Text = sDefinedNameText;
+                    //}
+
+                    // not doing anything with this but using it to pass to the function
+                    bool bHasError = false;
                     foreach (SLDefinedName d in slwb.DefinedNames)
                     {
-                        sDefinedNameText = d.Text;
-                        sDefinedNameText = AddDeleteCellFormulaDelta(sDefinedNameText, -1, 0, StartColumnIndex, NumberOfColumns);
-                        sDefinedNameText = AddDeleteDefinedNameRowColumnRangeDelta(sDefinedNameText, false, StartColumnIndex, NumberOfColumns);
-                        d.Text = sDefinedNameText;
+                        d.Text = AdjustCellFormulaDelta(d.Text, false, 0, StartColumnIndex, 0, StartColumnIndex + NumberOfColumns, true, true, true, false, StartColumnIndex, StartColumnIndex + NumberOfColumns, out bHasError);
                     }
                 }
                 #endregion
@@ -3780,6 +3965,8 @@ namespace SpreadsheetLight
             bool result = false;
             if (StartColumnIndex >= 1 && StartColumnIndex <= SLConstants.ColumnLimit)
             {
+                this.FlattenAllSharedCellFormula();
+
                 result = true;
                 int i = 0, iNewIndex = 0;
                 int iEndColumnIndex = StartColumnIndex + NumberOfColumns - 1;
@@ -3822,39 +4009,46 @@ namespace SpreadsheetLight
                 #endregion
 
                 #region Cell data
-                List<SLCellPoint> listCellRefKeys = slws.Cells.Keys.ToList<SLCellPoint>();
-                // this sorting in ascending order is crucial!
-                listCellRefKeys.Sort(new SLCellReferencePointComparer());
+                List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                // 2 April 2017: Need to sort or the row keys are "random" (depending on
+                // how the OS assign memory and order and such)
+                // This made the rows "random"
+                listRowKeys.Sort();
+                List<int> listColumnKeys;
 
                 SLCell c;
-                SLCellPoint pt;
-                for (i = 0; i < listCellRefKeys.Count; ++i)
+                foreach (int rowkey in listRowKeys)
                 {
-                    pt = listCellRefKeys[i];
-                    c = slws.Cells[pt];
-                    this.ProcessCellFormulaDelta(ref c, -1, 0, StartColumnIndex, -NumberOfColumns);
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    listColumnKeys.Sort();
+                    foreach (int colkey in listColumnKeys)
+                    {
+                        c = slws.CellWarehouse.Cells[rowkey][colkey].Clone();
 
-                    if (StartColumnIndex <= pt.ColumnIndex && pt.ColumnIndex <= iEndColumnIndex)
-                    {
-                        slws.Cells.Remove(pt);
-                    }
-                    else if (pt.ColumnIndex > iEndColumnIndex)
-                    {
-                        slws.Cells.Remove(pt);
-                        iNewIndex = pt.ColumnIndex - iNumberOfColumns;
-                        slws.Cells[new SLCellPoint(pt.RowIndex, iNewIndex)] = c;
-                    }
-                    else
-                    {
-                        slws.Cells[pt] = c;
+                        if (StartColumnIndex <= colkey && colkey <= iEndColumnIndex)
+                        {
+                            slws.CellWarehouse.Remove(rowkey, colkey);
+                        }
+                        else if (colkey > iEndColumnIndex)
+                        {
+                            slws.CellWarehouse.Remove(rowkey, colkey);
+                            iNewIndex = colkey - iNumberOfColumns;
+                            this.ProcessCellFormulaDelta(ref c, false, 0, StartColumnIndex, 0, StartColumnIndex - iNumberOfColumns, true, false, false, StartColumnIndex, iEndColumnIndex);
+                            slws.CellWarehouse.SetValue(rowkey, iNewIndex, c);
+                        }
+                        else
+                        {
+                            slws.CellWarehouse.SetValue(rowkey, colkey, c);
+                        }
                     }
                 }
 
                 #region Cell comments
-                listCellRefKeys = slws.Comments.Keys.ToList<SLCellPoint>();
+                List<SLCellPoint> listCellRefKeys = slws.Comments.Keys.ToList<SLCellPoint>();
                 // this sorting in ascending order is crucial!
                 listCellRefKeys.Sort(new SLCellReferencePointComparer());
 
+                SLCellPoint pt;
                 SLComment comm;
                 for (i = 0; i < listCellRefKeys.Count; ++i)
                 {
@@ -4362,27 +4556,65 @@ namespace SpreadsheetLight
                 #region Calculation chain
                 if (slwb.CalculationCells.Count > 0)
                 {
-                    List<int> listToDelete = new List<int>();
-                    for (i = 0; i < slwb.CalculationCells.Count; ++i)
-                    {
-                        if (slwb.CalculationCells[i].SheetId == giSelectedWorksheetID)
-                        {
-                            if (StartColumnIndex <= slwb.CalculationCells[i].ColumnIndex && slwb.CalculationCells[i].ColumnIndex <= iEndColumnIndex)
-                            {
-                                listToDelete.Add(i);
-                            }
-                            else if (iEndColumnIndex < slwb.CalculationCells[i].ColumnIndex)
-                            {
-                                slwb.CalculationCells[i].ColumnIndex -= iNumberOfColumns;
-                            }
-                        }
-                    }
+                    // I don't know enough to fiddle with calculation chains. So I'm going to ignore it.
+                    slwb.CalculationCells.Clear();
 
-                    // start from the back because we're deleting elements and we don't want
-                    // the indices to get messed up.
-                    for (i = listToDelete.Count - 1; i >= 0; --i)
+                    //List<int> listToDelete = new List<int>();
+                    //for (i = 0; i < slwb.CalculationCells.Count; ++i)
+                    //{
+                    //    if (slwb.CalculationCells[i].SheetId == giSelectedWorksheetID)
+                    //    {
+                    //        if (StartColumnIndex <= slwb.CalculationCells[i].ColumnIndex && slwb.CalculationCells[i].ColumnIndex <= iEndColumnIndex)
+                    //        {
+                    //            listToDelete.Add(i);
+                    //        }
+                    //        else if (iEndColumnIndex < slwb.CalculationCells[i].ColumnIndex)
+                    //        {
+                    //            slwb.CalculationCells[i].ColumnIndex -= iNumberOfColumns;
+                    //        }
+                    //    }
+                    //}
+
+                    //// start from the back because we're deleting elements and we don't want
+                    //// the indices to get messed up.
+                    //for (i = listToDelete.Count - 1; i >= 0; --i)
+                    //{
+                    //    slwb.CalculationCells.RemoveAt(listToDelete[i]);
+                    //}
+                }
+                #endregion
+
+                #region Shared formulas
+                if (slws.SharedCellFormulas.Count > 0)
+                {
+                    SLSharedCellFormula scf;
+                    bool bToDelete;
+                    List<uint> scfkeys = slws.SharedCellFormulas.Keys.ToList<uint>();
+                    for (i = scfkeys.Count - 1; i >= 0; --i)
                     {
-                        slwb.CalculationCells.RemoveAt(listToDelete[i]);
+                        scf = slws.SharedCellFormulas[scfkeys[i]];
+                        bToDelete = false;
+                        // start from the end because we might be deleting
+                        for (index = scf.Reference.Count - 1; index >= 0; --index)
+                        {
+                            iColumnIndex = scf.Reference[index].StartColumnIndex;
+                            iColumnIndex2 = scf.Reference[index].EndColumnIndex;
+                            this.DeleteRowColumnIndexDelta(StartColumnIndex, iEndColumnIndex, iNumberOfColumns, ref iColumnIndex, ref iColumnIndex2);
+                            if (iColumnIndex < 1 || iColumnIndex > SLConstants.ColumnLimit || iColumnIndex2 < 1 || iColumnIndex2 > SLConstants.ColumnLimit)
+                            {
+                                bToDelete = true;
+                                break;
+                            }
+
+                            scf.Reference[index] = new SLCellPointRange(
+                                scf.Reference[index].StartRowIndex, iColumnIndex,
+                                scf.Reference[index].EndRowIndex, iColumnIndex2);
+                        }
+
+                        if (bToDelete)
+                        {
+                            slws.SharedCellFormulas.Remove(scfkeys[i]);
+                        }
                     }
                 }
                 #endregion
@@ -4390,13 +4622,20 @@ namespace SpreadsheetLight
                 #region Defined names
                 if (slwb.DefinedNames.Count > 0)
                 {
-                    string sDefinedNameText = string.Empty;
+                    //string sDefinedNameText = string.Empty;
+                    //foreach (SLDefinedName d in slwb.DefinedNames)
+                    //{
+                    //    sDefinedNameText = d.Text;
+                    //    sDefinedNameText = AddDeleteCellFormulaDelta(sDefinedNameText, -1, 0, StartColumnIndex, -NumberOfColumns);
+                    //    sDefinedNameText = AddDeleteDefinedNameRowColumnRangeDelta(sDefinedNameText, false, StartColumnIndex, -NumberOfColumns);
+                    //    d.Text = sDefinedNameText;
+                    //}
+
+                    // not doing anything with this but using it to pass to the function
+                    bool bHasError = false;
                     foreach (SLDefinedName d in slwb.DefinedNames)
                     {
-                        sDefinedNameText = d.Text;
-                        sDefinedNameText = AddDeleteCellFormulaDelta(sDefinedNameText, -1, 0, StartColumnIndex, -NumberOfColumns);
-                        sDefinedNameText = AddDeleteDefinedNameRowColumnRangeDelta(sDefinedNameText, false, StartColumnIndex, -NumberOfColumns);
-                        d.Text = sDefinedNameText;
+                        d.Text = AdjustCellFormulaDelta(d.Text, false, 0, StartColumnIndex, 0, StartColumnIndex - NumberOfColumns, true, true, false, false, StartColumnIndex, iEndColumnIndex, out bHasError);
                     }
                 }
                 #endregion
@@ -4516,12 +4755,17 @@ namespace SpreadsheetLight
                 }
             }
 
-            List<SLCellPoint> list = slws.Cells.Keys.ToList<SLCellPoint>();
-            foreach (SLCellPoint pt in list)
+            List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+            List<int> listColumnKeys;
+            foreach (int rowkey in listRowKeys)
             {
-                if (iStartColumnIndex <= pt.ColumnIndex && pt.ColumnIndex <= iEndColumnIndex)
+                listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                foreach (int colkey in listColumnKeys)
                 {
-                    this.ClearCellContentData(pt);
+                    if (iStartColumnIndex <= colkey && colkey <= iEndColumnIndex)
+                    {
+                        this.ClearCellContentData(rowkey, colkey);
+                    }
                 }
             }
 
@@ -4626,7 +4870,18 @@ namespace SpreadsheetLight
                 pixellength[i] = 0;
             }
 
-            List<SLCellPoint> ptkeys = slws.Cells.Keys.ToList<SLCellPoint>();
+            List<int> listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+            List<int> listColumnKeys;
+            Dictionary<int, HashSet<int>> multikeys = new Dictionary<int, HashSet<int>>();
+            foreach (int rowkey in listRowKeys)
+            {
+                multikeys.Add(rowkey, new HashSet<int>());
+                listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                foreach (int colkey in listColumnKeys)
+                {
+                    multikeys[rowkey].Add(colkey);
+                }
+            }
 
             SLCell c;
             string sAutoFitSharedStringCacheKey;
@@ -4660,19 +4915,30 @@ namespace SpreadsheetLight
             SLCellPoint ptCheck;
             // remove points that are part of merged cells
             // Merged cells don't factor into autofitting.
-            // Start from end because we will be deleting points.
+            // Start from end because we will be deleting points (that's why we're reversing).
             if (slws.MergeCells.Count > 0)
             {
-                for (i = ptkeys.Count - 1; i >= 0; --i)
+                listRowKeys = slws.CellWarehouse.Cells.Keys.ToList<int>();
+                listRowKeys.Sort();
+                listRowKeys.Reverse();
+                foreach (int rowkey in listRowKeys)
                 {
-                    ptCheck = ptkeys[i];
-                    foreach (SLMergeCell mc in slws.MergeCells)
+                    listColumnKeys = slws.CellWarehouse.Cells[rowkey].Keys.ToList<int>();
+                    listColumnKeys.Sort();
+                    listColumnKeys.Reverse();
+                    foreach (int colkey in listColumnKeys)
                     {
-                        if (mc.StartRowIndex <= ptCheck.RowIndex && ptCheck.RowIndex <= mc.EndRowIndex
-                            && mc.StartColumnIndex <= ptCheck.ColumnIndex && ptCheck.ColumnIndex <= mc.EndColumnIndex)
+                        foreach (SLMergeCell mc in slws.MergeCells)
                         {
-                            ptkeys.RemoveAt(i);
-                            break;
+                            if (mc.StartRowIndex <= rowkey && rowkey <= mc.EndRowIndex
+                                && mc.StartColumnIndex <= colkey && colkey <= mc.EndColumnIndex)
+                            {
+                                if (multikeys.ContainsKey(rowkey) && multikeys[rowkey].Contains(colkey))
+                                {
+                                    multikeys[rowkey].Remove(colkey);
+                                }
+                                break;
+                            }
                         }
                     }
                 }
@@ -4713,376 +4979,382 @@ namespace SpreadsheetLight
             // If your text fills up the entire height of your screen, I would say your font size is
             // too large...
             // If you're doing this in some distant future where you can do spreadsheets on the
-            // freaking wall with Olympic pool sized screens, feel free to increase the dimensions.
+            // freaking wall with screens of cosmic proportions, feel free to increase the dimensions.
             using (System.Drawing.Bitmap bm = new System.Drawing.Bitmap(4096, 2048))
             {
                 using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(bm))
                 {
-                    foreach (SLCellPoint pt in ptkeys)
+                    listRowKeys = multikeys.Keys.ToList<int>();
+                    foreach (int rowkey in listRowKeys)
                     {
-                        if (IsRow) iPointIndex = pt.RowIndex;
-                        else iPointIndex = pt.ColumnIndex;
-
-                        if (StartIndex <= iPointIndex && iPointIndex <= EndIndex)
+                        listColumnKeys = multikeys[rowkey].ToList<int>();
+                        foreach (int colkey in listColumnKeys)
                         {
-                            c = slws.Cells[pt];
+                            if (IsRow) iPointIndex = rowkey;
+                            else iPointIndex = colkey;
 
-                            iStyleIndex = (int)c.StyleIndex;
-                            // assume if the font cache contains the style index,
-                            // the other caches also have it.
-                            if (dictAutoFitFontCache.ContainsKey(iStyleIndex))
+                            if (StartIndex <= iPointIndex && iPointIndex <= EndIndex)
                             {
-                                ftUsable = dictAutoFitFontCache[iStyleIndex];
-                                sDotNetFormatCode = dictAutoFitFormatCodeCache[iStyleIndex];
-                                sFormatCode = sDotNetFormatCode;
-                                iTextRotation = dictAutoFitTextRotationCache[iStyleIndex];
-                            }
-                            else
-                            {
-                                style = new SLStyle();
-                                style.FromHash(listStyle[iStyleIndex]);
+                                c = slws.CellWarehouse.Cells[rowkey][colkey].Clone();
 
-                                #region Get style stuff
-                                sFontName = SimpleTheme.MinorLatinFont;
-                                fFontSize = SLConstants.DefaultFontSize;
-                                bBold = false;
-                                bItalic = false;
-                                bStrike = false;
-                                bUnderline = false;
-                                drawstyle = System.Drawing.FontStyle.Regular;
-                                if (style.HasFont)
+                                iStyleIndex = (int)c.StyleIndex;
+                                // assume if the font cache contains the style index,
+                                // the other caches also have it because all the caches are set
+                                // at the same time and they are all internal (as in not public).
+                                if (dictAutoFitFontCache.ContainsKey(iStyleIndex))
                                 {
-                                    if (style.fontReal.HasFontScheme)
-                                    {
-                                        if (style.fontReal.FontScheme == FontSchemeValues.Major) sFontName = SimpleTheme.MajorLatinFont;
-                                        else if (style.fontReal.FontScheme == FontSchemeValues.Minor) sFontName = SimpleTheme.MinorLatinFont;
-                                        else if (style.fontReal.FontName != null && style.fontReal.FontName.Length > 0) sFontName = style.fontReal.FontName;
-                                    }
-                                    else
-                                    {
-                                        if (style.fontReal.FontName != null && style.fontReal.FontName.Length > 0) sFontName = style.fontReal.FontName;
-                                    }
-
-                                    if (style.fontReal.FontSize != null) fFontSize = style.fontReal.FontSize.Value;
-                                    if (style.fontReal.Bold != null && style.fontReal.Bold.Value) bBold = true;
-                                    if (style.fontReal.Italic != null && style.fontReal.Italic.Value) bItalic = true;
-                                    if (style.fontReal.Strike != null && style.fontReal.Strike.Value) bStrike = true;
-                                    if (style.fontReal.HasUnderline) bUnderline = true;
-                                }
-
-                                if (bBold) drawstyle |= System.Drawing.FontStyle.Bold;
-                                if (bItalic) drawstyle |= System.Drawing.FontStyle.Italic;
-                                if (bStrike) drawstyle |= System.Drawing.FontStyle.Strikeout;
-                                if (bUnderline) drawstyle |= System.Drawing.FontStyle.Underline;
-
-                                ftUsable = SLTool.GetUsableNormalFont(sFontName, fFontSize, drawstyle);
-                                sFormatCode = style.FormatCode;
-                                sDotNetFormatCode = SLTool.ToDotNetFormatCode(sFormatCode);
-                                if (style.HasAlignment && style.alignReal.TextRotation != null)
-                                {
-                                    iTextRotation = style.alignReal.TextRotation.Value;
+                                    ftUsable = dictAutoFitFontCache[iStyleIndex];
+                                    sDotNetFormatCode = dictAutoFitFormatCodeCache[iStyleIndex];
+                                    sFormatCode = sDotNetFormatCode;
+                                    iTextRotation = dictAutoFitTextRotationCache[iStyleIndex];
                                 }
                                 else
                                 {
-                                    iTextRotation = 0;
-                                }
+                                    style = new SLStyle();
+                                    style.FromHash(listStyle[iStyleIndex]);
 
-                                #endregion
-
-                                dictAutoFitFontCache[iStyleIndex] = (System.Drawing.Font)ftUsable.Clone();
-                                dictAutoFitFormatCodeCache[iStyleIndex] = sDotNetFormatCode;
-                                dictAutoFitTextRotationCache[iStyleIndex] = iTextRotation;
-                            }
-
-                            sText = string.Empty;
-
-                            fWidth = 0;
-                            fHeight = 0;
-                            // must set empty first! Used for checking if shared string and if should set into cache.
-                            sAutoFitSharedStringCacheKey = string.Empty;
-                            bSkipAdjustment = false;
-
-                            if (c.DataType == CellValues.SharedString)
-                            {
-                                index = Convert.ToInt32(c.NumericValue);
-
-                                sAutoFitSharedStringCacheKey = string.Format("{0}{1}{2}",
-                                    index.ToString(CultureInfo.InvariantCulture),
-                                    SLConstants.AutoFitCacheSeparator,
-                                    c.StyleIndex.ToString(CultureInfo.InvariantCulture));
-                                if (dictAutoFitSharedStringCache.ContainsKey(sAutoFitSharedStringCacheKey))
-                                {
-                                    fHeight = dictAutoFitSharedStringCache[sAutoFitSharedStringCacheKey].Height;
-                                    fWidth = dictAutoFitSharedStringCache[sAutoFitSharedStringCacheKey].Width;
-                                    bSkipAdjustment = true;
-                                }
-                                else if (index >= 0 && index < listSharedString.Count)
-                                {
-                                    rst = new SLRstType();
-                                    rst.FromHash(listSharedString[index]);
-
-                                    if (rst.istrReal.ChildElements.Count == 1 && rst.istrReal.Text != null)
+                                    #region Get style stuff
+                                    sFontName = SimpleTheme.MinorLatinFont;
+                                    fFontSize = SLConstants.DefaultFontSize;
+                                    bBold = false;
+                                    bItalic = false;
+                                    bStrike = false;
+                                    bUnderline = false;
+                                    drawstyle = System.Drawing.FontStyle.Regular;
+                                    if (style.HasFont)
                                     {
-                                        sText = rst.istrReal.Text.Text.TrimEnd();
-                                        sAutoFitCacheKey = string.Format("{0}{1}{2}", sText, SLConstants.AutoFitCacheSeparator, iStyleIndex.ToString(CultureInfo.InvariantCulture));
-
-                                        if (dictAutoFitTextCache.ContainsKey(sAutoFitCacheKey))
+                                        if (style.fontReal.HasFontScheme)
                                         {
-                                            szf = dictAutoFitTextCache[sAutoFitCacheKey];
-                                            fHeight = szf.Height;
-                                            fWidth = szf.Width;
+                                            if (style.fontReal.FontScheme == FontSchemeValues.Major) sFontName = SimpleTheme.MajorLatinFont;
+                                            else if (style.fontReal.FontScheme == FontSchemeValues.Minor) sFontName = SimpleTheme.MinorLatinFont;
+                                            else if (style.fontReal.FontName != null && style.fontReal.FontName.Length > 0) sFontName = style.fontReal.FontName;
                                         }
                                         else
                                         {
-                                            szf = SLTool.MeasureText(bm, g, sText, ftUsable);
-                                            fHeight = szf.Height;
-                                            fWidth = szf.Width;
-                                            dictAutoFitTextCache[sAutoFitCacheKey] = new System.Drawing.SizeF(fWidth, fHeight);
+                                            if (style.fontReal.FontName != null && style.fontReal.FontName.Length > 0) sFontName = style.fontReal.FontName;
                                         }
+
+                                        if (style.fontReal.FontSize != null) fFontSize = style.fontReal.FontSize.Value;
+                                        if (style.fontReal.Bold != null && style.fontReal.Bold.Value) bBold = true;
+                                        if (style.fontReal.Italic != null && style.fontReal.Italic.Value) bItalic = true;
+                                        if (style.fontReal.Strike != null && style.fontReal.Strike.Value) bStrike = true;
+                                        if (style.fontReal.HasUnderline) bUnderline = true;
+                                    }
+
+                                    if (bBold) drawstyle |= System.Drawing.FontStyle.Bold;
+                                    if (bItalic) drawstyle |= System.Drawing.FontStyle.Italic;
+                                    if (bStrike) drawstyle |= System.Drawing.FontStyle.Strikeout;
+                                    if (bUnderline) drawstyle |= System.Drawing.FontStyle.Underline;
+
+                                    ftUsable = SLTool.GetUsableNormalFont(sFontName, fFontSize, drawstyle, gbThrowExceptionsIfAny);
+                                    sFormatCode = style.FormatCode;
+                                    sDotNetFormatCode = SLTool.ToDotNetFormatCode(sFormatCode);
+                                    if (style.HasAlignment && style.alignReal.TextRotation != null)
+                                    {
+                                        iTextRotation = style.alignReal.TextRotation.Value;
                                     }
                                     else
                                     {
-                                        i = 0;
-                                        foreach (var child in rst.istrReal.ChildElements.Reverse())
+                                        iTextRotation = 0;
+                                    }
+
+                                    #endregion
+
+                                    dictAutoFitFontCache[iStyleIndex] = (System.Drawing.Font)ftUsable.Clone();
+                                    dictAutoFitFormatCodeCache[iStyleIndex] = sDotNetFormatCode;
+                                    dictAutoFitTextRotationCache[iStyleIndex] = iTextRotation;
+                                }
+
+                                sText = string.Empty;
+
+                                fWidth = 0;
+                                fHeight = 0;
+                                // must set empty first! Used for checking if shared string and if should set into cache.
+                                sAutoFitSharedStringCacheKey = string.Empty;
+                                bSkipAdjustment = false;
+
+                                if (c.DataType == CellValues.SharedString)
+                                {
+                                    index = Convert.ToInt32(c.NumericValue);
+
+                                    sAutoFitSharedStringCacheKey = string.Format("{0}{1}{2}",
+                                        index.ToString(CultureInfo.InvariantCulture),
+                                        SLConstants.AutoFitCacheSeparator,
+                                        c.StyleIndex.ToString(CultureInfo.InvariantCulture));
+                                    if (dictAutoFitSharedStringCache.ContainsKey(sAutoFitSharedStringCacheKey))
+                                    {
+                                        fHeight = dictAutoFitSharedStringCache[sAutoFitSharedStringCacheKey].Height;
+                                        fWidth = dictAutoFitSharedStringCache[sAutoFitSharedStringCacheKey].Width;
+                                        bSkipAdjustment = true;
+                                    }
+                                    else if (index >= 0 && index < listSharedString.Count)
+                                    {
+                                        rst = new SLRstType();
+                                        rst.FromHash(listSharedString[index]);
+
+                                        if (rst.istrReal.ChildElements.Count == 1 && rst.istrReal.Text != null)
                                         {
-                                            if (child is Text || child is Run)
+                                            sText = rst.istrReal.Text.Text.TrimEnd();
+                                            sAutoFitCacheKey = string.Format("{0}{1}{2}", sText, SLConstants.AutoFitCacheSeparator, iStyleIndex.ToString(CultureInfo.InvariantCulture));
+
+                                            if (dictAutoFitTextCache.ContainsKey(sAutoFitCacheKey))
                                             {
-                                                if (child is Text)
+                                                szf = dictAutoFitTextCache[sAutoFitCacheKey];
+                                                fHeight = szf.Height;
+                                                fWidth = szf.Width;
+                                            }
+                                            else
+                                            {
+                                                szf = SLTool.MeasureText(bm, g, sText, ftUsable);
+                                                fHeight = szf.Height;
+                                                fWidth = szf.Width;
+                                                dictAutoFitTextCache[sAutoFitCacheKey] = new System.Drawing.SizeF(fWidth, fHeight);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            i = 0;
+                                            foreach (var child in rst.istrReal.ChildElements.Reverse())
+                                            {
+                                                if (child is Text || child is Run)
                                                 {
-                                                    txt = (Text)child;
-                                                    sText = txt.Text;
-
-                                                    // the last element has the trailing spaces ignored. Hence the Reverse() above.
-                                                    if (i == 0) sText = sText.TrimEnd();
-
-                                                    szf = SLTool.MeasureText(bm, g, sText, ftUsable);
-                                                    if (szf.Height > fHeight) fHeight = szf.Height;
-                                                    fWidth += szf.Width;
-                                                }
-                                                else if (child is Run)
-                                                {
-                                                    sText = string.Empty;
-                                                    sFontName = (ftUsable.Name != null && ftUsable.Name.Length > 0) ? ftUsable.Name : SimpleTheme.MinorLatinFont;
-                                                    fFontSize = ftUsable.SizeInPoints;
-                                                    bBold = ((ftUsable.Style & System.Drawing.FontStyle.Bold) > 0) ? true : false;
-                                                    bItalic = ((ftUsable.Style & System.Drawing.FontStyle.Italic) > 0) ? true : false;
-                                                    bStrike = ((ftUsable.Style & System.Drawing.FontStyle.Strikeout) > 0) ? true : false;
-                                                    bUnderline = ((ftUsable.Style & System.Drawing.FontStyle.Underline) > 0) ? true : false;
-                                                    drawstyle = System.Drawing.FontStyle.Regular;
-
-                                                    run = (Run)child;
-                                                    sText = run.Text.Text;
-                                                    vFontScheme = FontSchemeValues.None;
-                                                    #region Run properties
-                                                    if (run.RunProperties != null)
+                                                    if (child is Text)
                                                     {
-                                                        foreach (var grandchild in run.RunProperties.ChildElements)
+                                                        txt = (Text)child;
+                                                        sText = txt.Text;
+
+                                                        // the last element has the trailing spaces ignored. Hence the Reverse() above.
+                                                        if (i == 0) sText = sText.TrimEnd();
+
+                                                        szf = SLTool.MeasureText(bm, g, sText, ftUsable);
+                                                        if (szf.Height > fHeight) fHeight = szf.Height;
+                                                        fWidth += szf.Width;
+                                                    }
+                                                    else if (child is Run)
+                                                    {
+                                                        sText = string.Empty;
+                                                        sFontName = (ftUsable.Name != null && ftUsable.Name.Length > 0) ? ftUsable.Name : SimpleTheme.MinorLatinFont;
+                                                        fFontSize = ftUsable.SizeInPoints;
+                                                        bBold = ((ftUsable.Style & System.Drawing.FontStyle.Bold) > 0) ? true : false;
+                                                        bItalic = ((ftUsable.Style & System.Drawing.FontStyle.Italic) > 0) ? true : false;
+                                                        bStrike = ((ftUsable.Style & System.Drawing.FontStyle.Strikeout) > 0) ? true : false;
+                                                        bUnderline = ((ftUsable.Style & System.Drawing.FontStyle.Underline) > 0) ? true : false;
+                                                        drawstyle = System.Drawing.FontStyle.Regular;
+
+                                                        run = (Run)child;
+                                                        sText = run.Text.Text;
+                                                        vFontScheme = FontSchemeValues.None;
+                                                        #region Run properties
+                                                        if (run.RunProperties != null)
                                                         {
-                                                            if (grandchild is RunFont)
+                                                            foreach (var grandchild in run.RunProperties.ChildElements)
                                                             {
-                                                                sFontName = ((RunFont)grandchild).Val;
-                                                            }
-                                                            else if (grandchild is FontSize)
-                                                            {
-                                                                fFontSize = ((FontSize)grandchild).Val;
-                                                            }
-                                                            else if (grandchild is Bold)
-                                                            {
-                                                                Bold b = (Bold)grandchild;
-                                                                if (b.Val == null) bBold = true;
-                                                                else bBold = b.Val.Value;
-                                                            }
-                                                            else if (grandchild is Italic)
-                                                            {
-                                                                Italic itlc = (Italic)grandchild;
-                                                                if (itlc.Val == null) bItalic = true;
-                                                                else bItalic = itlc.Val.Value;
-                                                            }
-                                                            else if (grandchild is Strike)
-                                                            {
-                                                                Strike strk = (Strike)grandchild;
-                                                                if (strk.Val == null) bStrike = true;
-                                                                else bStrike = strk.Val.Value;
-                                                            }
-                                                            else if (grandchild is Underline)
-                                                            {
-                                                                Underline und = (Underline)grandchild;
-                                                                if (und.Val == null)
+                                                                if (grandchild is RunFont)
                                                                 {
-                                                                    bUnderline = true;
+                                                                    sFontName = ((RunFont)grandchild).Val;
                                                                 }
-                                                                else
+                                                                else if (grandchild is FontSize)
                                                                 {
-                                                                    if (und.Val.Value != UnderlineValues.None) bUnderline = true;
-                                                                    else bUnderline = false;
+                                                                    fFontSize = ((FontSize)grandchild).Val;
                                                                 }
-                                                            }
-                                                            else if (grandchild is FontScheme)
-                                                            {
-                                                                vFontScheme = ((FontScheme)grandchild).Val;
+                                                                else if (grandchild is Bold)
+                                                                {
+                                                                    Bold b = (Bold)grandchild;
+                                                                    if (b.Val == null) bBold = true;
+                                                                    else bBold = b.Val.Value;
+                                                                }
+                                                                else if (grandchild is Italic)
+                                                                {
+                                                                    Italic itlc = (Italic)grandchild;
+                                                                    if (itlc.Val == null) bItalic = true;
+                                                                    else bItalic = itlc.Val.Value;
+                                                                }
+                                                                else if (grandchild is Strike)
+                                                                {
+                                                                    Strike strk = (Strike)grandchild;
+                                                                    if (strk.Val == null) bStrike = true;
+                                                                    else bStrike = strk.Val.Value;
+                                                                }
+                                                                else if (grandchild is Underline)
+                                                                {
+                                                                    Underline und = (Underline)grandchild;
+                                                                    if (und.Val == null)
+                                                                    {
+                                                                        bUnderline = true;
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (und.Val.Value != UnderlineValues.None) bUnderline = true;
+                                                                        else bUnderline = false;
+                                                                    }
+                                                                }
+                                                                else if (grandchild is FontScheme)
+                                                                {
+                                                                    vFontScheme = ((FontScheme)grandchild).Val;
+                                                                }
                                                             }
                                                         }
+                                                        #endregion
+
+                                                        if (vFontScheme == FontSchemeValues.Major) sFontName = SimpleTheme.MajorLatinFont;
+                                                        else if (vFontScheme == FontSchemeValues.Minor) sFontName = SimpleTheme.MinorLatinFont;
+
+                                                        if (bBold) drawstyle |= System.Drawing.FontStyle.Bold;
+                                                        if (bItalic) drawstyle |= System.Drawing.FontStyle.Italic;
+                                                        if (bStrike) drawstyle |= System.Drawing.FontStyle.Strikeout;
+                                                        if (bUnderline) drawstyle |= System.Drawing.FontStyle.Underline;
+
+                                                        // the last element has the trailing spaces ignored. Hence the Reverse() above.
+                                                        if (i == 0) sText = sText.TrimEnd();
+
+                                                        szf = SLTool.MeasureText(bm, g, sText, SLTool.GetUsableNormalFont(sFontName, fFontSize, drawstyle, gbThrowExceptionsIfAny));
+                                                        if (szf.Height > fHeight) fHeight = szf.Height;
+                                                        fWidth += szf.Width;
                                                     }
-                                                    #endregion
 
-                                                    if (vFontScheme == FontSchemeValues.Major) sFontName = SimpleTheme.MajorLatinFont;
-                                                    else if (vFontScheme == FontSchemeValues.Minor) sFontName = SimpleTheme.MinorLatinFont;
-
-                                                    if (bBold) drawstyle |= System.Drawing.FontStyle.Bold;
-                                                    if (bItalic) drawstyle |= System.Drawing.FontStyle.Italic;
-                                                    if (bStrike) drawstyle |= System.Drawing.FontStyle.Strikeout;
-                                                    if (bUnderline) drawstyle |= System.Drawing.FontStyle.Underline;
-
-                                                    // the last element has the trailing spaces ignored. Hence the Reverse() above.
-                                                    if (i == 0) sText = sText.TrimEnd();
-
-                                                    szf = SLTool.MeasureText(bm, g, sText, SLTool.GetUsableNormalFont(sFontName, fFontSize, drawstyle));
-                                                    if (szf.Height > fHeight) fHeight = szf.Height;
-                                                    fWidth += szf.Width;
+                                                    ++i;
                                                 }
-
-                                                ++i;
                                             }
                                         }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                if (c.DataType == CellValues.Number)
+                                else
                                 {
-                                    #region Numbers
-                                    if (sDotNetFormatCode.Length > 0)
+                                    if (c.DataType == CellValues.Number)
                                     {
-                                        if (c.CellText != null)
+                                        #region Numbers
+                                        if (sDotNetFormatCode.Length > 0)
                                         {
-                                            if (!double.TryParse(c.CellText, out fCellValue))
+                                            if (c.CellText != null)
                                             {
-                                                fCellValue = 0;
-                                            }
+                                                if (!double.TryParse(c.CellText, out fCellValue))
+                                                {
+                                                    fCellValue = 0;
+                                                }
 
-                                            if (sFormatCode.Equals("@"))
-                                            {
-                                                sText = fCellValue.ToString(CultureInfo.InvariantCulture);
+                                                if (sFormatCode.Equals("@"))
+                                                {
+                                                    sText = fCellValue.ToString(CultureInfo.InvariantCulture);
+                                                }
+                                                else
+                                                {
+                                                    sText = SLTool.ToSampleDisplayFormat(fCellValue, sDotNetFormatCode, gbThrowExceptionsIfAny);
+                                                }
                                             }
                                             else
                                             {
-                                                sText = SLTool.ToSampleDisplayFormat(fCellValue, sDotNetFormatCode);
+                                                if (sFormatCode.Equals("@"))
+                                                {
+                                                    sText = c.NumericValue.ToString(CultureInfo.InvariantCulture);
+                                                }
+                                                else
+                                                {
+                                                    sText = SLTool.ToSampleDisplayFormat(c.NumericValue, sDotNetFormatCode, gbThrowExceptionsIfAny);
+                                                }
                                             }
                                         }
                                         else
                                         {
-                                            if (sFormatCode.Equals("@"))
+                                            if (c.CellText != null)
                                             {
-                                                sText = c.NumericValue.ToString(CultureInfo.InvariantCulture);
+                                                if (!double.TryParse(c.CellText, out fCellValue))
+                                                {
+                                                    fCellValue = 0;
+                                                }
+
+                                                sText = SLTool.ToSampleDisplayFormat(fCellValue, "G10", gbThrowExceptionsIfAny);
                                             }
                                             else
                                             {
-                                                sText = SLTool.ToSampleDisplayFormat(c.NumericValue, sDotNetFormatCode);
+                                                sText = SLTool.ToSampleDisplayFormat(c.NumericValue, "G10", gbThrowExceptionsIfAny);
                                             }
                                         }
+                                        #endregion
+                                    }
+                                    else if (c.DataType == CellValues.Boolean)
+                                    {
+                                        if (c.NumericValue > 0.5) sText = "TRUE";
+                                        else sText = "FALSE";
                                     }
                                     else
                                     {
-                                        if (c.CellText != null)
-                                        {
-                                            if (!double.TryParse(c.CellText, out fCellValue))
-                                            {
-                                                fCellValue = 0;
-                                            }
-
-                                            sText = SLTool.ToSampleDisplayFormat(fCellValue, "G10");
-                                        }
-                                        else
-                                        {
-                                            sText = SLTool.ToSampleDisplayFormat(c.NumericValue, "G10");
-                                        }
+                                        if (c.CellText != null) sText = c.CellText;
+                                        else sText = string.Empty;
                                     }
-                                    #endregion
+
+                                    sAutoFitCacheKey = string.Format("{0}{1}{2}", sText, SLConstants.AutoFitCacheSeparator, iStyleIndex.ToString(CultureInfo.InvariantCulture));
+                                    if (dictAutoFitTextCache.ContainsKey(sAutoFitCacheKey))
+                                    {
+                                        szf = dictAutoFitTextCache[sAutoFitCacheKey];
+                                        fHeight = szf.Height;
+                                        fWidth = szf.Width;
+                                    }
+                                    else
+                                    {
+                                        szf = SLTool.MeasureText(bm, g, sText, ftUsable);
+                                        fHeight = szf.Height;
+                                        fWidth = szf.Width;
+                                        dictAutoFitTextCache[sAutoFitCacheKey] = new System.Drawing.SizeF(fWidth, fHeight);
+                                    }
                                 }
-                                else if (c.DataType == CellValues.Boolean)
+
+                                if (!bSkipAdjustment)
                                 {
-                                    if (c.NumericValue > 0.5) sText = "TRUE";
-                                    else sText = "FALSE";
+                                    // Through empirical experimental data, it appears that there's still a bit of padding
+                                    // at the end of the column when autofitting column widths. I don't know how to
+                                    // calculate this padding. So I guess. I experimented with the widths of obvious
+                                    // characters such as a space, an exclamation mark, a period.
+
+                                    // Then I remember there's the documentation on the Open XML class property
+                                    // Column.Width, which says there's an extra 5 pixels, 2 pixels on the left/right
+                                    // and a pixel for the gridlines.
+
+                                    // Note that this padding appears to change depending on the font/typeface and 
+                                    // font size used. (Haha... where have I seen this before...) So 5 pixels doesn't
+                                    // seem to work exactly. Or maybe it's wrong because the method of measuring isn't
+                                    // what Excel actually uses to measure the text.
+
+                                    // Since we're autofitting, it seems fitting (haha) that the column width is slightly
+                                    // larger to accomodate the text. So it's best to err on the larger side.
+                                    // Thus we add 7 instead of the "recommended" or "documented" 5 pixels, 1 extra pixel
+                                    // on the left and right.
+                                    fWidth += 7;
+                                    // I could also have used 8, but it might have been too much of an extra padding.
+                                    // The number 8 is a lucky number in Chinese culture. Goodness knows I need some
+                                    // luck figuring out what Excel is doing...
+
+                                    if (iTextRotation != 0)
+                                    {
+                                        szf = SLTool.CalculateOuterBoundsOfRotatedRectangle(fWidth, fHeight, iTextRotation);
+                                        fHeight = szf.Height;
+                                        fWidth = szf.Width;
+                                    }
+
+                                    // meaning the shared string portion was accessed (otherwise it'd be empty string)
+                                    if (sAutoFitSharedStringCacheKey.Length > 0)
+                                    {
+                                        dictAutoFitSharedStringCache[sAutoFitSharedStringCacheKey] = new System.Drawing.SizeF(fWidth, fHeight);
+                                    }
+                                }
+
+                                if (IsRow)
+                                {
+                                    if (fHeight > MaxPixelLength) fHeight = MaxPixelLength;
+
+                                    if (pixellength[iPointIndex] < fHeight)
+                                    {
+                                        pixellength[iPointIndex] = Convert.ToInt32(Math.Ceiling(fHeight));
+                                    }
                                 }
                                 else
                                 {
-                                    if (c.CellText != null) sText = c.CellText;
-                                    else sText = string.Empty;
-                                }
+                                    if (hsFilter.Contains(new SLCellPoint(rowkey, colkey))) fWidth += SLConstants.AutoFilterPixelWidth;
+                                    if (fWidth > MaxPixelLength) fWidth = MaxPixelLength;
 
-                                sAutoFitCacheKey = string.Format("{0}{1}{2}", sText, SLConstants.AutoFitCacheSeparator, iStyleIndex.ToString(CultureInfo.InvariantCulture));
-                                if (dictAutoFitTextCache.ContainsKey(sAutoFitCacheKey))
-                                {
-                                    szf = dictAutoFitTextCache[sAutoFitCacheKey];
-                                    fHeight = szf.Height;
-                                    fWidth = szf.Width;
-                                }
-                                else
-                                {
-                                    szf = SLTool.MeasureText(bm, g, sText, ftUsable);
-                                    fHeight = szf.Height;
-                                    fWidth = szf.Width;
-                                    dictAutoFitTextCache[sAutoFitCacheKey] = new System.Drawing.SizeF(fWidth, fHeight);
-                                }
-                            }
-
-                            if (!bSkipAdjustment)
-                            {
-                                // Through empirical experimental data, it appears that there's still a bit of padding
-                                // at the end of the column when autofitting column widths. I don't know how to
-                                // calculate this padding. So I guess. I experimented with the widths of obvious
-                                // characters such as a space, an exclamation mark, a period.
-
-                                // Then I remember there's the documentation on the Open XML class property
-                                // Column.Width, which says there's an extra 5 pixels, 2 pixels on the left/right
-                                // and a pixel for the gridlines.
-
-                                // Note that this padding appears to change depending on the font/typeface and 
-                                // font size used. (Haha... where have I seen this before...) So 5 pixels doesn't
-                                // seem to work exactly. Or maybe it's wrong because the method of measuring isn't
-                                // what Excel actually uses to measure the text.
-
-                                // Since we're autofitting, it seems fitting (haha) that the column width is slightly
-                                // larger to accomodate the text. So it's best to err on the larger side.
-                                // Thus we add 7 instead of the "recommended" or "documented" 5 pixels, 1 extra pixel
-                                // on the left and right.
-                                fWidth += 7;
-                                // I could also have used 8, but it might have been too much of an extra padding.
-                                // The number 8 is a lucky number in Chinese culture. Goodness knows I need some
-                                // luck figuring out what Excel is doing...
-
-                                if (iTextRotation != 0)
-                                {
-                                    szf = SLTool.CalculateOuterBoundsOfRotatedRectangle(fWidth, fHeight, iTextRotation);
-                                    fHeight = szf.Height;
-                                    fWidth = szf.Width;
-                                }
-
-                                // meaning the shared string portion was accessed (otherwise it'd be empty string)
-                                if (sAutoFitSharedStringCacheKey.Length > 0)
-                                {
-                                    dictAutoFitSharedStringCache[sAutoFitSharedStringCacheKey] = new System.Drawing.SizeF(fWidth, fHeight);
-                                }
-                            }
-
-                            if (IsRow)
-                            {
-                                if (fHeight > MaxPixelLength) fHeight = MaxPixelLength;
-
-                                if (pixellength[iPointIndex] < fHeight)
-                                {
-                                    pixellength[iPointIndex] = Convert.ToInt32(Math.Ceiling(fHeight));
-                                }
-                            }
-                            else
-                            {
-                                if (hsFilter.Contains(pt)) fWidth += SLConstants.AutoFilterPixelWidth;
-                                if (fWidth > MaxPixelLength) fWidth = MaxPixelLength;
-
-                                if (pixellength[iPointIndex] < fWidth)
-                                {
-                                    pixellength[iPointIndex] = Convert.ToInt32(Math.Ceiling(fWidth));
+                                    if (pixellength[iPointIndex] < fWidth)
+                                    {
+                                        pixellength[iPointIndex] = Convert.ToInt32(Math.Ceiling(fWidth));
+                                    }
                                 }
                             }
                         }

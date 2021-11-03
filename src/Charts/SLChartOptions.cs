@@ -132,7 +132,7 @@ namespace SpreadsheetLight.Charts
         internal bool HasUpDownBars;
         internal SLUpDownBars UpDownBars { get; set; }
 
-        internal SLChartOptions(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLChartOptions(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.BarDirection = C.BarDirectionValues.Bar;
             this.BarGrouping = C.BarGroupingValues.Standard;
@@ -151,7 +151,7 @@ namespace SpreadsheetLight.Charts
             this.SplitPosition = 0;
             this.SecondPiePoints = new List<int>();
             this.SecondPieSize = 75;
-            this.SeriesLinesShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.SeriesLinesShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             this.ScatterStyle = C.ScatterStyleValues.Line;
             this.bWireframe = null;
             this.RadarStyle = C.RadarStyleValues.Standard;
@@ -160,11 +160,11 @@ namespace SpreadsheetLight.Charts
             this.ShowNegativeBubbles = true;
             this.SizeRepresents = C.SizeRepresentsValues.Area;
             this.HasDropLines = false;
-            this.DropLines = new SLDropLines(ThemeColors, IsStylish);
+            this.DropLines = new SLDropLines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.HasHighLowLines = false;
-            this.HighLowLines = new SLHighLowLines(ThemeColors, IsStylish);
+            this.HighLowLines = new SLHighLowLines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.HasUpDownBars = false;
-            this.UpDownBars = new SLUpDownBars(ThemeColors, IsStylish);
+            this.UpDownBars = new SLUpDownBars(ThemeColors, IsStylish, ThrowExceptionsIfAny);
         }
 
         internal void MergeOptions(SLBarChartOptions bco)
@@ -235,7 +235,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLChartOptions Clone()
         {
-            SLChartOptions co = new SLChartOptions(this.SeriesLinesShapeProperties.listThemeColors);
+            SLChartOptions co = new SLChartOptions(this.SeriesLinesShapeProperties.listThemeColors, false, this.SeriesLinesShapeProperties.ThrowExceptionsIfAny);
             co.BarDirection = this.BarDirection;
             co.BarGrouping = this.BarGrouping;
             co.VaryColors = this.VaryColors;

@@ -34,9 +34,9 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLA.SLSoftEdge SoftEdge { get { return this.ShapeProperties.EffectList.SoftEdge; } }
 
-        internal SLDropLines(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLDropLines(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             if (IsStylish)
             {
                 this.ShapeProperties.Outline.Width = 0.75m;
@@ -53,10 +53,10 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
-        internal C.DropLines ToDropLines(bool IsStylish = false)
+        internal C.DropLines ToDropLines(bool IsStylish)
         {
             C.DropLines dl = new C.DropLines();
             dl.ChartShapeProperties = this.ShapeProperties.ToChartShapeProperties(IsStylish);
@@ -66,7 +66,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLDropLines Clone()
         {
-            SLDropLines dl = new SLDropLines(this.ShapeProperties.listThemeColors);
+            SLDropLines dl = new SLDropLines(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             dl.ShapeProperties = this.ShapeProperties.Clone();
 
             return dl;

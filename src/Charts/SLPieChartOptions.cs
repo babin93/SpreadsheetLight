@@ -105,15 +105,15 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLPieChartOptions()
         {
-            this.Initialize(new List<System.Drawing.Color>());
+            this.Initialize(new List<System.Drawing.Color>(), false);
         }
 
-        internal SLPieChartOptions(List<System.Drawing.Color> ThemeColors)
+        internal SLPieChartOptions(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
-            this.Initialize(ThemeColors);
+            this.Initialize(ThemeColors, ThrowExceptionsIfAny);
         }
 
-        private void Initialize(List<System.Drawing.Color> ThemeColors)
+        private void Initialize(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             this.VaryColors = true;
             this.iFirstSliceAngle = 0;
@@ -124,7 +124,7 @@ namespace SpreadsheetLight.Charts
             this.SplitPosition = 0;
             this.SecondPiePoints = new List<int>();
             this.iSecondPieSize = 75;
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLPieChartOptions Clone()
         {
-            SLPieChartOptions pco = new SLPieChartOptions(this.ShapeProperties.listThemeColors);
+            SLPieChartOptions pco = new SLPieChartOptions(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
             pco.VaryColors = this.VaryColors;
             pco.iFirstSliceAngle = this.iFirstSliceAngle;
             pco.byHoleSize = this.byHoleSize;

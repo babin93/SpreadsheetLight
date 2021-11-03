@@ -29,7 +29,10 @@ namespace SpreadsheetLight
 
         internal Dictionary<int, SLRowProperties> RowProperties { get; set; }
         internal Dictionary<int, SLColumnProperties> ColumnProperties { get; set; }
-        internal Dictionary<SLCellPoint, SLCell> Cells { get; set; }
+        //...internal Dictionary<SLCellPoint, SLCell> Cells { get; set; }
+        internal SLCellWarehouse CellWarehouse { get; set; }
+
+        internal Dictionary<uint, SLSharedCellFormula> SharedCellFormulas { get; set; }
 
         // note that this doesn't mean that the worksheet is protected,
         // just that the SheetProtection SDK class is present.
@@ -43,6 +46,7 @@ namespace SpreadsheetLight
 
         internal List<SLConditionalFormatting> ConditionalFormattings { get; set; }
         internal List<SLConditionalFormatting2010> ConditionalFormattings2010 { get; set; }
+        internal List<SLConditionalFormatOrder> ConditionalFormatOrder { get; set; }
 
         internal List<SLDataValidation> DataValidations { get; set; }
         internal bool DataValidationDisablePrompts { get; set; }
@@ -97,7 +101,10 @@ namespace SpreadsheetLight
 
             this.RowProperties = new Dictionary<int, SLRowProperties>();
             this.ColumnProperties = new Dictionary<int, SLColumnProperties>();
-            this.Cells = new Dictionary<SLCellPoint, SLCell>();
+            //...this.Cells = new Dictionary<SLCellPoint, SLCell>();
+            this.CellWarehouse = new SLCellWarehouse();
+
+            this.SharedCellFormulas = new Dictionary<uint, SLSharedCellFormula>();
 
             this.HasSheetProtection = false;
             this.SheetProtection = new SLSheetProtection();
@@ -109,6 +116,7 @@ namespace SpreadsheetLight
 
             this.ConditionalFormattings = new List<SLConditionalFormatting>();
             this.ConditionalFormattings2010 = new List<SLConditionalFormatting2010>();
+            this.ConditionalFormatOrder = new List<SLConditionalFormatOrder>();
 
             this.DataValidations = new List<SLDataValidation>();
             this.DataValidationDisablePrompts = false;

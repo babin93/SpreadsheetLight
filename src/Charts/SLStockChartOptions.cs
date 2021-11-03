@@ -107,25 +107,25 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLStockChartOptions()
         {
-            this.Initialize(new List<System.Drawing.Color>(), false);
+            this.Initialize(new List<System.Drawing.Color>(), false, false);
         }
 
-        internal SLStockChartOptions(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLStockChartOptions(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
-            this.Initialize(ThemeColors, IsStylish);
+            this.Initialize(ThemeColors, IsStylish, ThrowExceptionsIfAny);
         }
 
-        private void Initialize(List<System.Drawing.Color> ThemeColors, bool IsStylish)
+        private void Initialize(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.iGapWidth = 150;
             this.byOverlap = 0;
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             this.HasDropLines = false;
-            this.DropLines = new SLDropLines(ThemeColors, IsStylish);
+            this.DropLines = new SLDropLines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.HasHighLowLines = true;
-            this.HighLowLines = new SLHighLowLines(ThemeColors, IsStylish);
+            this.HighLowLines = new SLHighLowLines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.HasUpDownBars = true;
-            this.UpDownBars = new SLUpDownBars(ThemeColors, IsStylish);
+            this.UpDownBars = new SLUpDownBars(ThemeColors, IsStylish, ThrowExceptionsIfAny);
         }
 
         internal SLStockChartOptions Clone()

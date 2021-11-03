@@ -8,7 +8,11 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using DocumentFormat.OpenXml;
 using Excel = DocumentFormat.OpenXml.Office.Excel;
-using System.Windows.Forms;
+
+// Targetting .NET Standard means Forms is no longer useful
+// Keeping this as a comment as a reminder of pre-Standard days
+// (or until this comment is no longer useful :)
+//using System.Windows.Forms;
 
 namespace SpreadsheetLight
 {
@@ -226,12 +230,12 @@ namespace SpreadsheetLight
         {
             //http://support.microsoft.com/kb/107468
             // If it originally has single quotes, make it 2 single quotes.
-            // If include workbook path, or if start with digit, or has space,
-            // then must surround with single quote.
-            // We'll assume if it contains [ or ] then it's a workbook path,
-            // since [] are invalid sheet names.
+            // If include workbook path, or if start with digit, or has special characters,
+            // then must surround with single quotes.
+            // Based on empirical experiments, the underscore and period character don't
+            // require the single quotes.
             string result = WorksheetName.Replace("'", "''");
-            if ((result.IndexOfAny(" []".ToCharArray()) > -1)
+            if ((result.IndexOfAny(" `~!@#$%^&*()-=+[{]}\\|;:\",<>/?".ToCharArray()) > -1)
                 || Regex.IsMatch(result, "^\\d"))
             {
                 result = string.Format("'{0}'", result);
@@ -653,7 +657,7 @@ namespace SpreadsheetLight
             return dt;
         }
 
-        internal static string XmlWrite(string XmlToBeEscaped)
+        internal static string XmlWrite(string XmlToBeEscaped, bool ThrowExceptionsIfAny)
         {
             string result = XmlToBeEscaped;
 
@@ -670,16 +674,23 @@ namespace SpreadsheetLight
                 xtw.Close();
                 sw.Close();
             }
-            catch
+            catch (Exception e)
             {
-                // we don't care what really went wrong. The priority is to not throw errors...
-                result = XmlToBeEscaped;
+                if (ThrowExceptionsIfAny)
+                {
+                    throw e;
+                }
+                else
+                {
+                    // we don't care what really went wrong. The priority is to not throw errors...
+                    result = XmlToBeEscaped;
+                }
             }
 
             return result;
         }
 
-        internal static string XmlRead(string XmlThatsEscaped)
+        internal static string XmlRead(string XmlThatsEscaped, bool ThrowExceptionsIfAny)
         {
             string result = XmlThatsEscaped;
 
@@ -695,16 +706,23 @@ namespace SpreadsheetLight
                 xtr.Close();
                 sr.Close();
             }
-            catch
+            catch (Exception e)
             {
-                // we don't care what really went wrong. The priority is to not throw errors...
-                result = XmlThatsEscaped;
+                if (ThrowExceptionsIfAny)
+                {
+                    throw e;
+                }
+                else
+                {
+                    // we don't care what really went wrong. The priority is to not throw errors...
+                    result = XmlThatsEscaped;
+                }
             }
 
             return result;
         }
 
-        internal static Font GetUsableNormalFont(string FontName, double FontSize, FontStyle DrawStyle)
+        internal static Font GetUsableNormalFont(string FontName, double FontSize, FontStyle DrawStyle, bool ThrowExceptionsIfAny)
         {
             Font usablefont = new Font(FontFamily.GenericSansSerif, (float)FontSize);
 
@@ -716,58 +734,65 @@ namespace SpreadsheetLight
             {
                 usablefont = new Font(FontName, (float)FontSize, DrawStyle);
             }
-            catch
+            catch (Exception e)
             {
-                FontFamily ff = new FontFamily(FontName);
-                FontStyle fsLastDitch = FontStyle.Regular;
-                if ((DrawStyle & FontStyle.Bold) > 0)
+                if (ThrowExceptionsIfAny)
                 {
-                    if (ff.IsStyleAvailable(FontStyle.Bold)) fsLastDitch |= FontStyle.Bold;
-                }
-                if ((DrawStyle & FontStyle.Italic) > 0)
-                {
-                    if (ff.IsStyleAvailable(FontStyle.Italic)) fsLastDitch |= FontStyle.Italic;
-                }
-                if ((DrawStyle & FontStyle.Strikeout) > 0)
-                {
-                    if (ff.IsStyleAvailable(FontStyle.Strikeout)) fsLastDitch |= FontStyle.Strikeout;
-                }
-                if ((DrawStyle & FontStyle.Underline) > 0)
-                {
-                    if (ff.IsStyleAvailable(FontStyle.Underline)) fsLastDitch |= FontStyle.Underline;
-                }
-                // do I need to check for combinations? Say bold and italic combo exists, but
-                // just bold or just italic doesn't. What kind of typeface does this?!?!
-                // If I didn't know better, I'd point my finger at Verdana, but that's because
-                // I've a verdant vendetta against it...
-
-                if (ff.IsStyleAvailable(fsLastDitch))
-                {
-                    usablefont = new Font(FontName, (float)FontSize, fsLastDitch);
-                    // else I-don't-care-anymore
-                }
-                else if (ff.IsStyleAvailable(FontStyle.Regular))
-                {
-                    usablefont = new Font(FontName, (float)FontSize, FontStyle.Regular);
-                }
-                else if (ff.IsStyleAvailable(FontStyle.Bold))
-                {
-                    usablefont = new Font(FontName, (float)FontSize, FontStyle.Bold);
-                }
-                else if (ff.IsStyleAvailable(FontStyle.Italic))
-                {
-                    usablefont = new Font(FontName, (float)FontSize, FontStyle.Italic);
-                }
-                else if (ff.IsStyleAvailable(FontStyle.Bold | FontStyle.Italic))
-                {
-                    usablefont = new Font(FontName, (float)FontSize, FontStyle.Bold | FontStyle.Italic);
+                    throw e;
                 }
                 else
                 {
-                    // the font name or typeface might not be installed (say on a web server),
-                    // so we'll use a generic sans serif font as a fallback. What if this fails?
-                    // I don't know... *can* it fail?
-                    usablefont = new Font(FontFamily.GenericSansSerif, (float)FontSize);
+                    FontFamily ff = new FontFamily(FontName);
+                    FontStyle fsLastDitch = FontStyle.Regular;
+                    if ((DrawStyle & FontStyle.Bold) > 0)
+                    {
+                        if (ff.IsStyleAvailable(FontStyle.Bold)) fsLastDitch |= FontStyle.Bold;
+                    }
+                    if ((DrawStyle & FontStyle.Italic) > 0)
+                    {
+                        if (ff.IsStyleAvailable(FontStyle.Italic)) fsLastDitch |= FontStyle.Italic;
+                    }
+                    if ((DrawStyle & FontStyle.Strikeout) > 0)
+                    {
+                        if (ff.IsStyleAvailable(FontStyle.Strikeout)) fsLastDitch |= FontStyle.Strikeout;
+                    }
+                    if ((DrawStyle & FontStyle.Underline) > 0)
+                    {
+                        if (ff.IsStyleAvailable(FontStyle.Underline)) fsLastDitch |= FontStyle.Underline;
+                    }
+                    // do I need to check for combinations? Say bold and italic combo exists, but
+                    // just bold or just italic doesn't. What kind of typeface does this?!?!
+                    // If I didn't know better, I'd point my finger at Verdana, but that's because
+                    // I've a verdant vendetta against it...
+
+                    if (ff.IsStyleAvailable(fsLastDitch))
+                    {
+                        usablefont = new Font(FontName, (float)FontSize, fsLastDitch);
+                        // else I-don't-care-anymore
+                    }
+                    else if (ff.IsStyleAvailable(FontStyle.Regular))
+                    {
+                        usablefont = new Font(FontName, (float)FontSize, FontStyle.Regular);
+                    }
+                    else if (ff.IsStyleAvailable(FontStyle.Bold))
+                    {
+                        usablefont = new Font(FontName, (float)FontSize, FontStyle.Bold);
+                    }
+                    else if (ff.IsStyleAvailable(FontStyle.Italic))
+                    {
+                        usablefont = new Font(FontName, (float)FontSize, FontStyle.Italic);
+                    }
+                    else if (ff.IsStyleAvailable(FontStyle.Bold | FontStyle.Italic))
+                    {
+                        usablefont = new Font(FontName, (float)FontSize, FontStyle.Bold | FontStyle.Italic);
+                    }
+                    else
+                    {
+                        // the font name or typeface might not be installed (say on a web server),
+                        // so we'll use a generic sans serif font as a fallback. What if this fails?
+                        // I don't know... *can* it fail?
+                        usablefont = new Font(FontFamily.GenericSansSerif, (float)FontSize);
+                    }
                 }
             }
 
@@ -933,7 +958,7 @@ namespace SpreadsheetLight
             return (FormatCode.IndexOfAny("dmyhs".ToCharArray()) >= 0) ? true : false;
         }
 
-        internal static string ToSampleDisplayFormat(double Data, string FormatCode)
+        internal static string ToSampleDisplayFormat(double Data, string FormatCode, bool ThrowExceptionsIfAny)
         {
             // NOTE: This is NOT meant to display the given value in the way Excel displays it.
             // It's meant to simulate the resulting string so that I can measure the width and height.
@@ -963,9 +988,16 @@ namespace SpreadsheetLight
                     result = result.Replace(SLConstants.ElapsedMinuteFormatPlaceholder, ts.TotalMinutes.ToString("f0", CultureInfo.InvariantCulture));
                     result = result.Replace(SLConstants.ElapsedSecondFormatPlaceholder, ts.TotalSeconds.ToString("f0", CultureInfo.InvariantCulture));
                 }
-                catch
+                catch (Exception e)
                 {
-                    result = dt.ToString("dd/MM/yyyy");
+                    if (ThrowExceptionsIfAny)
+                    {
+                        throw e;
+                    }
+                    else
+                    {
+                        result = dt.ToString("dd/MM/yyyy");
+                    }
                 }
             }
             else
@@ -976,9 +1008,16 @@ namespace SpreadsheetLight
                     result = Data.ToString(FormatCode);
                     result = result.Replace(SLConstants.GeneralFormatPlaceholder, sGeneralResult);
                 }
-                catch
+                catch (Exception e)
                 {
-                    result = Data.ToString("G10");
+                    if (ThrowExceptionsIfAny)
+                    {
+                        throw e;
+                    }
+                    else
+                    {
+                        result = Data.ToString("G10");
+                    }
                 }
             }
 
@@ -1034,18 +1073,24 @@ namespace SpreadsheetLight
 
             for (int i = 0; i < saText.Length; ++i)
             {
-                // It seems that using Graphics.MeasureString() for the width and
-                // TextRenderer.MeasureText() for the height works out.
-                // No, I don't know why. Yes, I'm just as confused.
-
                 szfa[i] = g.MeasureString(string.Format("_{0}_", saText[i]), UsableFont);
                 szfa[i].Width = szfa[i].Width - fDoubleUnderscoreWidth;
+                
+                // Targetting .NET Standard means TextRenderer is no longer available
+                // We will just have to make do with Graphics only for width and height.
 
-                // why do we use the average? I don't know. It appears to give the closest
-                // approximation to Excel's calculation formula.
-                // No, I don't know why. Yes, I'm just as confused.
-                // The result should be at most a few pixels off, so it isn't too bad.
-                szfa[i].Height = (szfa[i].Height + (float)TextRenderer.MeasureText(Text, UsableFont).Height) / 2.0f;
+                //// It seems that using Graphics.MeasureString() for the width and
+                //// TextRenderer.MeasureText() for the height works out.
+                //// No, I don't know why. Yes, I'm just as confused.
+
+                //szfa[i] = g.MeasureString(string.Format("_{0}_", saText[i]), UsableFont);
+                //szfa[i].Width = szfa[i].Width - fDoubleUnderscoreWidth;
+
+                //// why do we use the average? I don't know. It appears to give the closest
+                //// approximation to Excel's calculation formula.
+                //// No, I don't know why. Yes, I'm just as confused.
+                //// The result should be at most a few pixels off, so it isn't too bad.
+                //szfa[i].Height = (szfa[i].Height + (float)TextRenderer.MeasureText(Text, UsableFont).Height) / 2.0f;
             }
 
             SizeF szf = new SizeF(0, 0);
@@ -1068,12 +1113,28 @@ namespace SpreadsheetLight
             int iStartColumnIndex = -1;
             int iEndRowIndex = -1;
             int iEndColumnIndex = -1;
+            int iSwap = 0;
 
             index = Reference.IndexOf(":");
             if (index > -1)
             {
                 if (SLTool.FormatCellReferenceRangeToRowColumnIndex(Reference, out iStartRowIndex, out iStartColumnIndex, out iEndRowIndex, out iEndColumnIndex))
                 {
+                    // in case the cell ranges aren't top-left to bottom-right
+                    // But if you're using Excel, Excel would've taken care of this.
+                    if (iStartRowIndex > iEndRowIndex)
+                    {
+                        iSwap = iStartRowIndex;
+                        iStartRowIndex = iEndRowIndex;
+                        iEndRowIndex = iSwap;
+                    }
+                    if (iStartColumnIndex > iEndColumnIndex)
+                    {
+                        iSwap = iStartColumnIndex;
+                        iStartColumnIndex = iEndColumnIndex;
+                        iEndColumnIndex = iSwap;
+                    }
+
                     pt = new SLCellPointRange(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
                 }
             }
@@ -1088,6 +1149,57 @@ namespace SpreadsheetLight
             return pt;
         }
 
+        internal static List<SLCellPointRange> TranslateReferenceToCellPointRangeList(string Reference)
+        {
+            List<SLCellPointRange> pts = new List<SLCellPointRange>();
+            SLCellPointRange pt;
+            int index;
+            int iStartRowIndex = -1;
+            int iStartColumnIndex = -1;
+            int iEndRowIndex = -1;
+            int iEndColumnIndex = -1;
+            int iSwap = 0;
+
+            string[] sa = Reference.Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < sa.Length; ++i)
+            {
+                index = Reference.IndexOf(":");
+                if (index > -1)
+                {
+                    if (SLTool.FormatCellReferenceRangeToRowColumnIndex(Reference, out iStartRowIndex, out iStartColumnIndex, out iEndRowIndex, out iEndColumnIndex))
+                    {
+                        // in case the cell ranges aren't top-left to bottom-right
+                        // But if you're using Excel, Excel would've taken care of this.
+                        if (iStartRowIndex > iEndRowIndex)
+                        {
+                            iSwap = iStartRowIndex;
+                            iStartRowIndex = iEndRowIndex;
+                            iEndRowIndex = iSwap;
+                        }
+                        if (iStartColumnIndex > iEndColumnIndex)
+                        {
+                            iSwap = iStartColumnIndex;
+                            iStartColumnIndex = iEndColumnIndex;
+                            iEndColumnIndex = iSwap;
+                        }
+
+                        pt = new SLCellPointRange(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
+                        pts.Add(pt);
+                    }
+                }
+                else
+                {
+                    if (SLTool.FormatCellReferenceToRowColumnIndex(Reference, out iStartRowIndex, out iStartColumnIndex))
+                    {
+                        pt = new SLCellPointRange(iStartRowIndex, iStartColumnIndex, iStartRowIndex, iStartColumnIndex);
+                        pts.Add(pt);
+                    }
+                }
+            }
+
+            return pts;
+        }
+
         internal static List<SLCellPointRange> TranslateSeqRefToCellPointRange(ListValue<StringValue> SeqRef)
         {
             List<SLCellPointRange> pts = new List<SLCellPointRange>();
@@ -1098,6 +1210,7 @@ namespace SpreadsheetLight
             int iStartColumnIndex = -1;
             int iEndRowIndex = -1;
             int iEndColumnIndex = -1;
+            int iSwap = 0;
 
             foreach (StringValue s in SeqRef.Items)
             {
@@ -1106,6 +1219,21 @@ namespace SpreadsheetLight
                 {
                     if (SLTool.FormatCellReferenceRangeToRowColumnIndex(s.Value, out iStartRowIndex, out iStartColumnIndex, out iEndRowIndex, out iEndColumnIndex))
                     {
+                        // in case the cell ranges aren't top-left to bottom-right
+                        // But if you're using Excel, Excel would've taken care of this.
+                        if (iStartRowIndex > iEndRowIndex)
+                        {
+                            iSwap = iStartRowIndex;
+                            iStartRowIndex = iEndRowIndex;
+                            iEndRowIndex = iSwap;
+                        }
+                        if (iStartColumnIndex > iEndColumnIndex)
+                        {
+                            iSwap = iStartColumnIndex;
+                            iStartColumnIndex = iEndColumnIndex;
+                            iEndColumnIndex = iSwap;
+                        }
+
                         pt = new SLCellPointRange(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
                         pts.Add(pt);
                     }
@@ -1154,6 +1282,7 @@ namespace SpreadsheetLight
             int iStartColumnIndex = -1;
             int iEndRowIndex = -1;
             int iEndColumnIndex = -1;
+            int iSwap = 0;
 
             string[] saRef = RefSeq.Text.Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
 
@@ -1164,6 +1293,21 @@ namespace SpreadsheetLight
                 {
                     if (SLTool.FormatCellReferenceRangeToRowColumnIndex(s, out iStartRowIndex, out iStartColumnIndex, out iEndRowIndex, out iEndColumnIndex))
                     {
+                        // in case the cell ranges aren't top-left to bottom-right
+                        // But if you're using Excel, Excel would've taken care of this.
+                        if (iStartRowIndex > iEndRowIndex)
+                        {
+                            iSwap = iStartRowIndex;
+                            iStartRowIndex = iEndRowIndex;
+                            iEndRowIndex = iSwap;
+                        }
+                        if (iStartColumnIndex > iEndColumnIndex)
+                        {
+                            iSwap = iStartColumnIndex;
+                            iStartColumnIndex = iEndColumnIndex;
+                            iEndColumnIndex = iSwap;
+                        }
+
                         pt = new SLCellPointRange(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
                         pts.Add(pt);
                     }

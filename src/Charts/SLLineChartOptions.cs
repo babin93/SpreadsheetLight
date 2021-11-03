@@ -62,23 +62,23 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLLineChartOptions()
         {
-            this.Initialize(new List<System.Drawing.Color>(), false);
+            this.Initialize(new List<System.Drawing.Color>(), false, false);
         }
 
-        internal SLLineChartOptions(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLLineChartOptions(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
-            this.Initialize(ThemeColors, IsStylish);
+            this.Initialize(ThemeColors, IsStylish, ThrowExceptionsIfAny);
         }
 
-        private void Initialize(List<System.Drawing.Color> ThemeColors, bool IsStylish)
+        private void Initialize(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.iGapDepth = 150;
             this.HasDropLines = false;
-            this.DropLines = new SLDropLines(ThemeColors, IsStylish);
+            this.DropLines = new SLDropLines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.HasHighLowLines = false;
-            this.HighLowLines = new SLHighLowLines(ThemeColors, IsStylish);
+            this.HighLowLines = new SLHighLowLines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.HasUpDownBars = false;
-            this.UpDownBars = new SLUpDownBars(ThemeColors, IsStylish);
+            this.UpDownBars = new SLUpDownBars(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.Smooth = false;
         }
 

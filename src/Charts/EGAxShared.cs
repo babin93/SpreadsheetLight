@@ -22,8 +22,8 @@ namespace SpreadsheetLight.Charts
                 fLogBase = value;
                 if (value != null)
                 {
-                    if (fLogBase < 2.0) fLogBase = 2.0;
-                    if (fLogBase > 1000.0) fLogBase = 1000.0;
+                    if (value.Value < 2.0) fLogBase = 2.0;
+                    if (value.Value > 1000.0) fLogBase = 1000.0;
                 }
             }
         }
@@ -37,11 +37,15 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public bool InReverseOrder
         {
-            get { return this.Orientation == C.OrientationValues.MinMax ? false : true; }
+            get { return this.Orientation != C.OrientationValues.MinMax; }
             set
             {
-                if (value) this.Orientation = C.OrientationValues.MaxMin;
-                else this.Orientation = C.OrientationValues.MinMax;
+                if (value)
+                {
+                    this.Orientation = C.OrientationValues.MaxMin;
+                    return;
+                }
+                this.Orientation = C.OrientationValues.MinMax;
             }
         }
 
@@ -179,7 +183,7 @@ namespace SpreadsheetLight.Charts
         internal C.CrossesValues OtherAxisCrosses { get; set; }
         internal double OtherAxisCrossesAt { get; set; }
 
-        internal EGAxShared(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal EGAxShared(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.AxisId = 0;
             this.LogBase = null;
@@ -195,12 +199,12 @@ namespace SpreadsheetLight.Charts
             this.AxisPosition = C.AxisPositionValues.Bottom;
 
             this.ShowMajorGridlines = false;
-            this.MajorGridlines = new SLMajorGridlines(ThemeColors, IsStylish);
+            this.MajorGridlines = new SLMajorGridlines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.ShowMinorGridlines = false;
-            this.MinorGridlines = new SLMinorGridlines(ThemeColors, IsStylish);
+            this.MinorGridlines = new SLMinorGridlines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
 
             this.ShowTitle = false;
-            this.Title = new SLTitle(ThemeColors, IsStylish);
+            this.Title = new SLTitle(ThemeColors, IsStylish, ThrowExceptionsIfAny);
 
             this.sFormatCode = SLConstants.NumberFormatGeneral;
             this.bSourceLinked = true;
@@ -210,7 +214,7 @@ namespace SpreadsheetLight.Charts
             this.MinorTickMark = C.TickMarkValues.None;
             this.TickLabelPosition = C.TickLabelPositionValues.NextTo; // default
 
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
 
             this.CrossingAxis = 0;
             this.IsCrosses = null;

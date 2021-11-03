@@ -40,7 +40,7 @@ namespace SpreadsheetLight.Charts
         internal SLAxisDataSourceType AxisData { get; set; }
         internal SLNumberDataSourceType NumberData { get; set; }
 
-        internal SLDataSeries(List<System.Drawing.Color> ThemeColors)
+        internal SLDataSeries(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             this.ChartType = SLDataSeriesChartType.None;
 
@@ -51,7 +51,7 @@ namespace SpreadsheetLight.Charts
             this.StringReference = new SLStringReference();
             this.NumericValue = string.Empty;
 
-            this.Options = new SLDataSeriesOptions(ThemeColors);
+            this.Options = new SLDataSeriesOptions(ThemeColors, ThrowExceptionsIfAny);
 
             this.DataPointOptionsList = new Dictionary<int, SLDataPointOptions>();
 
@@ -64,7 +64,7 @@ namespace SpreadsheetLight.Charts
             this.NumberData = new SLNumberDataSourceType();
         }
 
-        internal C.PieChartSeries ToPieChartSeries(bool IsStylish = false)
+        internal C.PieChartSeries ToPieChartSeries(bool IsStylish)
         {
             C.PieChartSeries pcs = new C.PieChartSeries();
             pcs.Index = new C.Index() { Val = this.Index };
@@ -109,7 +109,7 @@ namespace SpreadsheetLight.Charts
             {
                 if (this.GroupDataLabelOptions == null)
                 {
-                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(new List<System.Drawing.Color>());
+                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(this.Options.ShapeProperties.listThemeColors, this.Options.ShapeProperties.ThrowExceptionsIfAny);
                     pcs.Append(gdloptions.ToDataLabels(this.DataLabelOptionsList, true));
                 }
                 else
@@ -124,7 +124,7 @@ namespace SpreadsheetLight.Charts
             return pcs;
         }
 
-        internal C.RadarChartSeries ToRadarChartSeries(bool IsStylish = false)
+        internal C.RadarChartSeries ToRadarChartSeries(bool IsStylish)
         {
             C.RadarChartSeries rcs = new C.RadarChartSeries();
             rcs.Index = new C.Index() { Val = this.Index };
@@ -169,7 +169,7 @@ namespace SpreadsheetLight.Charts
             {
                 if (this.GroupDataLabelOptions == null)
                 {
-                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(new List<System.Drawing.Color>());
+                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(this.Options.ShapeProperties.listThemeColors, this.Options.ShapeProperties.ThrowExceptionsIfAny);
                     rcs.Append(gdloptions.ToDataLabels(this.DataLabelOptionsList, true));
                 }
                 else
@@ -184,7 +184,7 @@ namespace SpreadsheetLight.Charts
             return rcs;
         }
 
-        internal C.AreaChartSeries ToAreaChartSeries(bool IsStylish = false)
+        internal C.AreaChartSeries ToAreaChartSeries(bool IsStylish)
         {
             C.AreaChartSeries acs = new C.AreaChartSeries();
             acs.Index = new C.Index() { Val = this.Index };
@@ -226,7 +226,7 @@ namespace SpreadsheetLight.Charts
             {
                 if (this.GroupDataLabelOptions == null)
                 {
-                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(new List<System.Drawing.Color>());
+                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(this.Options.ShapeProperties.listThemeColors, this.Options.ShapeProperties.ThrowExceptionsIfAny);
                     acs.Append(gdloptions.ToDataLabels(this.DataLabelOptionsList, true));
                 }
                 else
@@ -241,7 +241,7 @@ namespace SpreadsheetLight.Charts
             return acs;
         }
 
-        internal C.BarChartSeries ToBarChartSeries(bool IsStylish = false)
+        internal C.BarChartSeries ToBarChartSeries(bool IsStylish)
         {
             C.BarChartSeries bcs = new C.BarChartSeries();
             bcs.Index = new C.Index() { Val = this.Index };
@@ -285,7 +285,7 @@ namespace SpreadsheetLight.Charts
             {
                 if (this.GroupDataLabelOptions == null)
                 {
-                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(new List<System.Drawing.Color>());
+                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(this.Options.ShapeProperties.listThemeColors, this.Options.ShapeProperties.ThrowExceptionsIfAny);
                     bcs.Append(gdloptions.ToDataLabels(this.DataLabelOptionsList, true));
                 }
                 else
@@ -305,7 +305,7 @@ namespace SpreadsheetLight.Charts
             return bcs;
         }
 
-        internal C.ScatterChartSeries ToScatterChartSeries(bool IsStylish = false)
+        internal C.ScatterChartSeries ToScatterChartSeries(bool IsStylish)
         {
             C.ScatterChartSeries scs = new C.ScatterChartSeries();
             scs.Index = new C.Index() { Val = this.Index };
@@ -350,7 +350,7 @@ namespace SpreadsheetLight.Charts
             {
                 if (this.GroupDataLabelOptions == null)
                 {
-                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(new List<System.Drawing.Color>());
+                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(this.Options.ShapeProperties.listThemeColors, this.Options.ShapeProperties.ThrowExceptionsIfAny);
                     scs.Append(gdloptions.ToDataLabels(this.DataLabelOptionsList, true));
                 }
                 else
@@ -367,7 +367,7 @@ namespace SpreadsheetLight.Charts
             return scs;
         }
 
-        internal C.LineChartSeries ToLineChartSeries(bool IsStylish = false)
+        internal C.LineChartSeries ToLineChartSeries(bool IsStylish)
         {
             C.LineChartSeries lcs = new C.LineChartSeries();
             lcs.Index = new C.Index() { Val = this.Index };
@@ -412,7 +412,7 @@ namespace SpreadsheetLight.Charts
             {
                 if (this.GroupDataLabelOptions == null)
                 {
-                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(new List<System.Drawing.Color>());
+                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(this.Options.ShapeProperties.listThemeColors, this.Options.ShapeProperties.ThrowExceptionsIfAny);
                     lcs.Append(gdloptions.ToDataLabels(this.DataLabelOptionsList, true));
                 }
                 else
@@ -429,7 +429,7 @@ namespace SpreadsheetLight.Charts
             return lcs;
         }
 
-        internal C.BubbleChartSeries ToBubbleChartSeries(bool IsStylish = false)
+        internal C.BubbleChartSeries ToBubbleChartSeries(bool IsStylish)
         {
             C.BubbleChartSeries bcs = new C.BubbleChartSeries();
             bcs.Index = new C.Index() { Val = this.Index };
@@ -471,7 +471,7 @@ namespace SpreadsheetLight.Charts
             {
                 if (this.GroupDataLabelOptions == null)
                 {
-                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(new List<System.Drawing.Color>());
+                    SLGroupDataLabelOptions gdloptions = new SLGroupDataLabelOptions(this.Options.ShapeProperties.listThemeColors, this.Options.ShapeProperties.ThrowExceptionsIfAny);
                     bcs.Append(gdloptions.ToDataLabels(this.DataLabelOptionsList, true));
                 }
                 else
@@ -492,7 +492,7 @@ namespace SpreadsheetLight.Charts
             return bcs;
         }
 
-        internal C.SurfaceChartSeries ToSurfaceChartSeries(bool IsStylish = false)
+        internal C.SurfaceChartSeries ToSurfaceChartSeries(bool IsStylish)
         {
             C.SurfaceChartSeries scs = new C.SurfaceChartSeries();
             scs.Index = new C.Index() { Val = this.Index };
@@ -524,7 +524,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLDataSeries Clone()
         {
-            SLDataSeries ds = new SLDataSeries(this.Options.ShapeProperties.listThemeColors);
+            SLDataSeries ds = new SLDataSeries(this.Options.ShapeProperties.listThemeColors, this.Options.ShapeProperties.ThrowExceptionsIfAny);
             ds.ChartType = this.ChartType;
             ds.Index = this.Index;
             ds.Order = this.Order;

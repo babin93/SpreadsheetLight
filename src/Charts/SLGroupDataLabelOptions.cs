@@ -17,7 +17,8 @@ namespace SpreadsheetLight.Charts
         public bool ShowLeaderLines { get; set; }
         // TODO Leaderlines (pie charts)
 
-        internal SLGroupDataLabelOptions(List<System.Drawing.Color> ThemeColors) : base(ThemeColors)
+        internal SLGroupDataLabelOptions(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
+            : base(ThemeColors, ThrowExceptionsIfAny)
         {
             this.ShowLeaderLines = false;
         }
@@ -49,7 +50,7 @@ namespace SpreadsheetLight.Charts
                     lbls.Append(new C.NumberingFormat() { FormatCode = this.FormatCode, SourceLinked = this.SourceLinked });
                 }
 
-                if (this.ShapeProperties.HasShapeProperties) lbls.Append(this.ShapeProperties.ToChartShapeProperties());
+                if (this.ShapeProperties.HasShapeProperties) lbls.Append(this.ShapeProperties.ToChartShapeProperties(false));
 
                 if (this.Rotation != null || this.Vertical != null || this.Anchor != null || this.AnchorCenter != null)
                 {
@@ -89,7 +90,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLGroupDataLabelOptions Clone()
         {
-            SLGroupDataLabelOptions gdlo = new SLGroupDataLabelOptions(this.ShapeProperties.listThemeColors);
+            SLGroupDataLabelOptions gdlo = new SLGroupDataLabelOptions(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
             gdlo.Rotation = this.Rotation;
             gdlo.Vertical = this.Vertical;
             gdlo.Anchor = this.Anchor;

@@ -39,7 +39,8 @@ namespace SpreadsheetLight.Charts
             }
         }
 
-        internal SLSeriesAxis(List<System.Drawing.Color> ThemeColors, bool IsStylish = false) : base(ThemeColors, IsStylish)
+        internal SLSeriesAxis(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
+            : base(ThemeColors, IsStylish, ThrowExceptionsIfAny)
         {
             this.iTickLabelSkip = 1;
             this.iTickMarkSkip = 1;
@@ -56,7 +57,7 @@ namespace SpreadsheetLight.Charts
             }
         }
 
-        internal C.SeriesAxis ToSeriesAxis(bool IsStylish = false)
+        internal C.SeriesAxis ToSeriesAxis(bool IsStylish)
         {
             C.SeriesAxis sa = new C.SeriesAxis();
             sa.AxisId = new C.AxisId() { Val = this.AxisId };
@@ -99,7 +100,7 @@ namespace SpreadsheetLight.Charts
             sa.MinorTickMark = new C.MinorTickMark() { Val = this.MinorTickMark };
             sa.TickLabelPosition = new C.TickLabelPosition() { Val = this.TickLabelPosition };
 
-            if (this.ShapeProperties.HasShapeProperties) sa.ChartShapeProperties = this.ShapeProperties.ToChartShapeProperties();
+            if (this.ShapeProperties.HasShapeProperties) sa.ChartShapeProperties = this.ShapeProperties.ToChartShapeProperties(IsStylish);
 
             if (this.Rotation != null || this.Vertical != null || this.Anchor != null || this.AnchorCenter != null)
             {
@@ -184,7 +185,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLSeriesAxis Clone()
         {
-            SLSeriesAxis sa = new SLSeriesAxis(this.ShapeProperties.listThemeColors);
+            SLSeriesAxis sa = new SLSeriesAxis(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             sa.Rotation = this.Rotation;
             sa.Vertical = this.Vertical;
             sa.Anchor = this.Anchor;

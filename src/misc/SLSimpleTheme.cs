@@ -5,6 +5,11 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using A = DocumentFormat.OpenXml.Drawing;
 
+// Targetting .NET Standard means Forms is no longer useful
+// Keeping this as a comment as a reminder of pre-Standard days
+// (or until this comment is no longer useful :)
+//using System.Windows.Forms;
+
 namespace SpreadsheetLight
 {
     /// <summary>
@@ -407,6 +412,8 @@ namespace SpreadsheetLight
         internal List<string> listThemeColorsHex;
         internal SLThemeTypeValues InternalThemeType = SLThemeTypeValues.Office;
 
+        internal bool ThrowExceptionsIfAny { get; set; }
+
         private string sThemeName;
         internal string ThemeName
         {
@@ -457,8 +464,10 @@ namespace SpreadsheetLight
 
         internal List<double> listColumnStepSize;
 
-        internal SLSimpleTheme(WorkbookPart wbp, SLThemeTypeValues themetype)
+        internal SLSimpleTheme(WorkbookPart wbp, SLThemeTypeValues themetype, bool ThrowExceptionsIfAny)
         {
+            this.ThrowExceptionsIfAny = ThrowExceptionsIfAny;
+
             LoadIndexedColors(wbp);
             InitialiseThemeColors();
             InternalThemeType = themetype;
@@ -478,8 +487,10 @@ namespace SpreadsheetLight
             CalculateRowColumnInfo();
         }
 
-        internal SLSimpleTheme(WorkbookPart wbp, SLThemeSettings Settings)
+        internal SLSimpleTheme(WorkbookPart wbp, SLThemeSettings Settings, bool ThrowExceptionsIfAny)
         {
+            this.ThrowExceptionsIfAny = ThrowExceptionsIfAny;
+
             LoadIndexedColors(wbp);
             InitialiseThemeColors();
             InternalThemeType = SLThemeTypeValues.Office;
@@ -534,7 +545,7 @@ namespace SpreadsheetLight
 
         internal void CalculateRowColumnInfo()
         {
-            System.Drawing.Font usablefont = SLTool.GetUsableNormalFont(this.MinorLatinFont, SLConstants.DefaultFontSize, System.Drawing.FontStyle.Regular);
+            System.Drawing.Font usablefont = SLTool.GetUsableNormalFont(this.MinorLatinFont, SLConstants.DefaultFontSize, System.Drawing.FontStyle.Regular, this.ThrowExceptionsIfAny);
 
             // WARNING: The following algorithm is not guaranteed to work for all fonts.
             // But any algorithm is better than *no* algorithm.
@@ -576,6 +587,13 @@ namespace SpreadsheetLight
 
             using (System.Drawing.Bitmap bmGraphics = new System.Drawing.Bitmap(iBitmapWidth, iBitmapHeight))
             {
+                // Thanks to John C for submitting this workaround patch!
+                // Workaround for Mono: https://bugzilla.xamarin.com/show_bug.cgi?id=33310
+                if ((bmGraphics.HorizontalResolution < float.Epsilon) && (bmGraphics.VerticalResolution < float.Epsilon))
+                {
+                    bmGraphics.SetResolution(96, 96);
+                }
+
                 System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(bmGraphics);
 
                 int i, j;

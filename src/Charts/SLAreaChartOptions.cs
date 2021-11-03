@@ -37,18 +37,18 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLAreaChartOptions()
         {
-            this.Initialize(new List<System.Drawing.Color>(), false);
+            this.Initialize(new List<System.Drawing.Color>(), false, false);
         }
 
-        internal SLAreaChartOptions(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLAreaChartOptions(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
-            this.Initialize(ThemeColors, IsStylish);
+            this.Initialize(ThemeColors, IsStylish, ThrowExceptionsIfAny);
         }
 
-        private void Initialize(List<System.Drawing.Color> ThemeColors, bool IsStylish)
+        private void Initialize(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.HasDropLines = false;
-            this.DropLines = new SLDropLines(ThemeColors, IsStylish);
+            this.DropLines = new SLDropLines(ThemeColors, IsStylish, ThrowExceptionsIfAny);
             this.iGapDepth = 150;
         }
 

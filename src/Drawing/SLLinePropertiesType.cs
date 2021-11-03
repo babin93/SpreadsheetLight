@@ -11,6 +11,7 @@ namespace SpreadsheetLight.Drawing
     public class SLLinePropertiesType
     {
         internal List<System.Drawing.Color> listThemeColors;
+        internal bool ThrowExceptionsIfAny { get; set; }
 
         internal bool HasLine
         {
@@ -154,7 +155,7 @@ namespace SpreadsheetLight.Drawing
         /// </summary>
         public A.PenAlignmentValues? Alignment { get; set; }
 
-        internal SLLinePropertiesType(List<System.Drawing.Color> ThemeColors)
+        internal SLLinePropertiesType(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
             int i;
             this.listThemeColors = new List<System.Drawing.Color>();
@@ -162,6 +163,8 @@ namespace SpreadsheetLight.Drawing
             {
                 this.listThemeColors.Add(ThemeColors[i]);
             }
+
+            this.ThrowExceptionsIfAny = ThrowExceptionsIfAny;
 
             this.SetAllNull();
         }
@@ -172,7 +175,7 @@ namespace SpreadsheetLight.Drawing
             this.bUseSolidLine = false;
             this.SolidColor = new SLColorTransform(this.listThemeColors);
             this.bUseGradientLine = false;
-            this.GradientColor = new SLGradientFill(this.listThemeColors);
+            this.GradientColor = new SLGradientFill(this.listThemeColors, this.ThrowExceptionsIfAny);
 
             this.decWidth = 0m;
             this.HasWidth = false;
@@ -480,7 +483,7 @@ namespace SpreadsheetLight.Drawing
 
         internal SLLinePropertiesType Clone()
         {
-            SLLinePropertiesType lpt = new SLLinePropertiesType(this.listThemeColors);
+            SLLinePropertiesType lpt = new SLLinePropertiesType(this.listThemeColors, this.ThrowExceptionsIfAny);
             lpt.bUseNoLine = this.bUseNoLine;
             lpt.bUseSolidLine = this.bUseSolidLine;
             lpt.SolidColor = this.SolidColor.Clone();

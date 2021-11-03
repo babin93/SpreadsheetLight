@@ -93,19 +93,19 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLDataSeriesOptions()
         {
-            this.Initialize(new List<System.Drawing.Color>());
+            this.Initialize(new List<System.Drawing.Color>(), false);
         }
 
-        internal SLDataSeriesOptions(List<System.Drawing.Color> ThemeColors)
+        internal SLDataSeriesOptions(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
-            this.Initialize(ThemeColors);
+            this.Initialize(ThemeColors, ThrowExceptionsIfAny);
         }
 
-        private void Initialize(List<System.Drawing.Color> ThemeColors)
+        private void Initialize(List<System.Drawing.Color> ThemeColors, bool ThrowExceptionsIfAny)
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             this.InvertIfNegative = null;
-            this.Marker = new SLMarker(ThemeColors);
+            this.Marker = new SLMarker(ThemeColors, ThrowExceptionsIfAny);
             this.iExplosion = null;
             this.bBubble3D = null;
             this.Smooth = false;
@@ -114,7 +114,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLDataSeriesOptions Clone()
         {
-            SLDataSeriesOptions dso = new SLDataSeriesOptions(this.ShapeProperties.listThemeColors);
+            SLDataSeriesOptions dso = new SLDataSeriesOptions(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
             dso.ShapeProperties = this.ShapeProperties.Clone();
             dso.InvertIfNegative = this.InvertIfNegative;
             dso.Marker = this.Marker.Clone();

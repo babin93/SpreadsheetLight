@@ -1740,7 +1740,9 @@ namespace SpreadsheetLight
 
             if (NewStyle.HasAlignment) this.Alignment = NewStyle.Alignment.Clone();
             if (NewStyle.HasProtection) this.Protection = NewStyle.Protection.Clone();
-            if (NewStyle.HasNumberingFormat) this.FormatCode = NewStyle.FormatCode;
+
+            // if the new style format code is non-empty, then overwrite (even if new one is General)
+            if (!string.IsNullOrEmpty(NewStyle.FormatCode)) this.FormatCode = NewStyle.FormatCode;
 
             if (NewStyle.HasFont)
             {

@@ -48,12 +48,12 @@ namespace SpreadsheetLight.Charts
         /// Soft edge properties.
         /// </summary>
         public SLA.SLSoftEdge SoftEdge { get { return this.ShapeProperties.EffectList.SoftEdge; } }
-        
-        internal SLLegend(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+
+        internal SLLegend(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.LegendPosition = IsStylish ? C.LegendPositionValues.Bottom : C.LegendPositionValues.Right;
             this.Overlay = false;
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
 
             if (IsStylish)
             {
@@ -72,10 +72,10 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
-        internal C.Legend ToLegend(bool IsStylish = false)
+        internal C.Legend ToLegend(bool IsStylish)
         {
             C.Legend l = new C.Legend();
             l.LegendPosition = new C.LegendPosition() { Val = this.LegendPosition };
@@ -137,7 +137,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLLegend Clone()
         {
-            SLLegend l = new SLLegend(this.ShapeProperties.listThemeColors);
+            SLLegend l = new SLLegend(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             l.LegendPosition = this.LegendPosition;
             l.Overlay = this.Overlay;
             l.ShapeProperties = this.ShapeProperties.Clone();

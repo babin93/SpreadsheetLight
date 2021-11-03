@@ -52,10 +52,10 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLA.SLRotation3D Rotation3D { get { return this.ShapeProperties.Rotation3D; } }
 
-        internal SLBackWall(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLBackWall(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
             this.Thickness = 0;
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             if (IsStylish)
             {
                 this.ShapeProperties.Fill.SetNoFill();
@@ -68,12 +68,12 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
         internal SLBackWall Clone()
         {
-            SLBackWall bw = new SLBackWall(this.ShapeProperties.listThemeColors);
+            SLBackWall bw = new SLBackWall(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             bw.Thickness = this.Thickness;
             bw.ShapeProperties = this.ShapeProperties.Clone();
 

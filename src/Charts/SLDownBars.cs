@@ -44,9 +44,9 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public SLA.SLFormat3D Format3D { get { return this.ShapeProperties.Format3D; } }
 
-        internal SLDownBars(List<System.Drawing.Color> ThemeColors, bool IsStylish = false)
+        internal SLDownBars(List<System.Drawing.Color> ThemeColors, bool IsStylish, bool ThrowExceptionsIfAny)
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(ThemeColors, ThrowExceptionsIfAny);
             if (IsStylish)
             {
                 this.ShapeProperties.Fill.SetSolidFill(A.SchemeColorValues.Dark1, 0.35m, 0);
@@ -60,10 +60,10 @@ namespace SpreadsheetLight.Charts
         /// </summary>
         public void ClearShapeProperties()
         {
-            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors);
+            this.ShapeProperties = new SLA.SLShapeProperties(this.ShapeProperties.listThemeColors, this.ShapeProperties.ThrowExceptionsIfAny);
         }
 
-        internal C.DownBars ToDownBars(bool IsStylish = false)
+        internal C.DownBars ToDownBars(bool IsStylish)
         {
             C.DownBars db = new C.DownBars();
 
@@ -74,7 +74,7 @@ namespace SpreadsheetLight.Charts
 
         internal SLDownBars Clone()
         {
-            SLDownBars db = new SLDownBars(this.ShapeProperties.listThemeColors);
+            SLDownBars db = new SLDownBars(this.ShapeProperties.listThemeColors, false, this.ShapeProperties.ThrowExceptionsIfAny);
             db.ShapeProperties = this.ShapeProperties.Clone();
 
             return db;

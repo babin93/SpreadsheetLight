@@ -82,7 +82,7 @@ namespace SpreadsheetLight
         /// <returns>An SLComment with theme information.</returns>
         public SLComment CreateComment()
         {
-            SLComment comm = new SLComment(SimpleTheme.listThemeColors);
+            SLComment comm = new SLComment(SimpleTheme.listThemeColors, SimpleTheme.ThrowExceptionsIfAny);
             if (this.DocumentProperties.Creator.Length > 0)
             {
                 comm.Author = this.DocumentProperties.Creator;
@@ -261,17 +261,18 @@ namespace SpreadsheetLight
             int i, index;
             uint j;
             SLCell c;
-            SLCellPoint pt;
+            int iRowIndex, iColumnIndex;
             string sHeaderText = string.Empty;
             SharedStringItem ssi;
             SLRstType rst = new SLRstType(SLConstants.OfficeThemeMajorLatinFont, SLConstants.OfficeThemeMinorLatinFont, new List<System.Drawing.Color>(), new List<System.Drawing.Color>());
             for (i = tbl.StartColumnIndex; i <= tbl.EndColumnIndex; ++i)
             {
-                pt = new SLCellPoint(StartRowIndex, i);
+                iRowIndex = StartRowIndex;
+                iColumnIndex = i;
                 sHeaderText = string.Empty;
-                if (slws.Cells.ContainsKey(pt))
+                if (slws.CellWarehouse.Exists(iRowIndex, iColumnIndex))
                 {
-                    c = slws.Cells[pt];
+                    c = slws.CellWarehouse.Cells[iRowIndex][iColumnIndex];
                     if (c.CellText == null)
                     {
                         if (c.DataType == CellValues.Number) sHeaderText = c.NumericValue.ToString(CultureInfo.InvariantCulture);
@@ -335,63 +336,64 @@ namespace SpreadsheetLight
             return tbl;
         }
 
-        public SLPivotTable CreatePivotTable(string StartCellReference, string EndCellReference)
-        {
-            int iStartRowIndex = -1;
-            int iStartColumnIndex = -1;
-            int iEndRowIndex = -1;
-            int iEndColumnIndex = -1;
-            if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex))
-            {
-                iStartRowIndex = -1;
-                iStartColumnIndex = -1;
-            }
-            if (!SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
-            {
-                iEndRowIndex = -1;
-                iEndColumnIndex = -1;
-            }
+        //Not ready yet!
+        //public SLPivotTable CreatePivotTable(string StartCellReference, string EndCellReference)
+        //{
+        //    int iStartRowIndex = -1;
+        //    int iStartColumnIndex = -1;
+        //    int iEndRowIndex = -1;
+        //    int iEndColumnIndex = -1;
+        //    if (!SLTool.FormatCellReferenceToRowColumnIndex(StartCellReference, out iStartRowIndex, out iStartColumnIndex))
+        //    {
+        //        iStartRowIndex = -1;
+        //        iStartColumnIndex = -1;
+        //    }
+        //    if (!SLTool.FormatCellReferenceToRowColumnIndex(EndCellReference, out iEndRowIndex, out iEndColumnIndex))
+        //    {
+        //        iEndRowIndex = -1;
+        //        iEndColumnIndex = -1;
+        //    }
 
-            return CreatePivotTable(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
-        }
+        //    return CreatePivotTable(iStartRowIndex, iStartColumnIndex, iEndRowIndex, iEndColumnIndex);
+        //}
 
-        public SLPivotTable CreatePivotTable(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex)
-        {
-            int iStartRowIndex = 1, iEndRowIndex = 1, iStartColumnIndex = 1, iEndColumnIndex = 1;
-            if (StartRowIndex < EndRowIndex)
-            {
-                iStartRowIndex = StartRowIndex;
-                iEndRowIndex = EndRowIndex;
-            }
-            else
-            {
-                iStartRowIndex = EndRowIndex;
-                iEndRowIndex = StartRowIndex;
-            }
+        //public SLPivotTable CreatePivotTable(int StartRowIndex, int StartColumnIndex, int EndRowIndex, int EndColumnIndex)
+        //{
+        //    int iStartRowIndex = 1, iEndRowIndex = 1, iStartColumnIndex = 1, iEndColumnIndex = 1;
+        //    if (StartRowIndex < EndRowIndex)
+        //    {
+        //        iStartRowIndex = StartRowIndex;
+        //        iEndRowIndex = EndRowIndex;
+        //    }
+        //    else
+        //    {
+        //        iStartRowIndex = EndRowIndex;
+        //        iEndRowIndex = StartRowIndex;
+        //    }
 
-            if (StartColumnIndex < EndColumnIndex)
-            {
-                iStartColumnIndex = StartColumnIndex;
-                iEndColumnIndex = EndColumnIndex;
-            }
-            else
-            {
-                iStartColumnIndex = EndColumnIndex;
-                iEndColumnIndex = StartColumnIndex;
-            }
+        //    if (StartColumnIndex < EndColumnIndex)
+        //    {
+        //        iStartColumnIndex = StartColumnIndex;
+        //        iEndColumnIndex = EndColumnIndex;
+        //    }
+        //    else
+        //    {
+        //        iStartColumnIndex = EndColumnIndex;
+        //        iEndColumnIndex = StartColumnIndex;
+        //    }
 
-            // not checking bounds because we're going to be more stringent on the data source range.
+        //    // not checking bounds because we're going to be more stringent on the data source range.
 
-            SLPivotTable pivot = new SLPivotTable();
-            slwb.RefreshPossiblePivotTableCacheId();
-            pivot.CacheId = slwb.PossiblePivotTableCacheId;
-            pivot.Name = slwb.GetNextPossiblePivotTableName();
+        //    SLPivotTable pivot = new SLPivotTable();
+        //    slwb.RefreshPossiblePivotTableCacheId();
+        //    pivot.CacheId = slwb.PossiblePivotTableCacheId;
+        //    pivot.Name = slwb.GetNextPossiblePivotTableName();
 
-            pivot.IsDataSourceTable = false;
-            pivot.SheetTableName = gsSelectedWorksheetName;
+        //    pivot.IsDataSourceTable = false;
+        //    pivot.SheetTableName = gsSelectedWorksheetName;
 
-            return pivot;
-        }
+        //    return pivot;
+        //}
 
         /// <summary>
         /// Creates an instance of SLSparklineGroup, given cell references of opposite cells in a cell range.
@@ -850,10 +852,12 @@ namespace SpreadsheetLight
             chart.IsStylish = Options.IsStylish;
             chart.RoundedCorners = false;
 
+            chart.ThrowExceptionsIfAny = SimpleTheme.ThrowExceptionsIfAny;
+
             // assume combination charts are possible first
             chart.IsCombinable = true;
 
-            chart.PlotArea = new SLC.SLPlotArea(SimpleTheme.listThemeColors, slwb.WorkbookProperties.Date1904, Options.IsStylish);
+            chart.PlotArea = new SLC.SLPlotArea(SimpleTheme.listThemeColors, slwb.WorkbookProperties.Date1904, Options.IsStylish, SimpleTheme.ThrowExceptionsIfAny);
             chart.PlotArea.DataSeries = this.FillChartDataSeries(WorksheetName, StartRowIndex, StartColumnIndex, EndRowIndex, EndColumnIndex, chart.RowsAsDataSeries, chart.ShowHiddenData);
             chart.SetPlotAreaAxes();
 
@@ -870,23 +874,23 @@ namespace SpreadsheetLight
             chart.ChartName = string.Format("Chart {0}", slws.Charts.Count + 1);
 
             chart.HasTitle = false;
-            chart.Title = new SLC.SLTitle(SimpleTheme.listThemeColors, Options.IsStylish);
+            chart.Title = new SLC.SLTitle(SimpleTheme.listThemeColors, Options.IsStylish, SimpleTheme.ThrowExceptionsIfAny);
             chart.Title.Overlay = false;
 
             chart.Is3D = false;
-            chart.Floor = new SLC.SLFloor(SimpleTheme.listThemeColors, Options.IsStylish);
-            chart.SideWall = new SLC.SLSideWall(SimpleTheme.listThemeColors, Options.IsStylish);
-            chart.BackWall = new SLC.SLBackWall(SimpleTheme.listThemeColors, Options.IsStylish);
+            chart.Floor = new SLC.SLFloor(SimpleTheme.listThemeColors, Options.IsStylish, SimpleTheme.ThrowExceptionsIfAny);
+            chart.SideWall = new SLC.SLSideWall(SimpleTheme.listThemeColors, Options.IsStylish, SimpleTheme.ThrowExceptionsIfAny);
+            chart.BackWall = new SLC.SLBackWall(SimpleTheme.listThemeColors, Options.IsStylish, SimpleTheme.ThrowExceptionsIfAny);
 
             chart.ShowLegend = true;
-            chart.Legend = new SLC.SLLegend(SimpleTheme.listThemeColors, Options.IsStylish);
+            chart.Legend = new SLC.SLLegend(SimpleTheme.listThemeColors, Options.IsStylish, SimpleTheme.ThrowExceptionsIfAny);
             chart.Legend.Overlay = false;
             if (Options.IsStylish)
             {
                 chart.Legend.LegendPosition = A.Charts.LegendPositionValues.Bottom;
             }
 
-            chart.ShapeProperties = new SLA.SLShapeProperties(SimpleTheme.listThemeColors);
+            chart.ShapeProperties = new SLA.SLShapeProperties(SimpleTheme.listThemeColors, SimpleTheme.ThrowExceptionsIfAny);
 
             if (Options.IsStylish)
             {
@@ -965,10 +969,10 @@ namespace SpreadsheetLight
             List<SLC.SLDataSeries> series = new List<SLC.SLDataSeries>();
             int i, j;
             SLCell c;
-            SLCellPoint pt;
+            int iRowIndex, iColumnIndex;
             Dictionary<int, bool> HiddenRows = new Dictionary<int, bool>();
             Dictionary<int, bool> HiddenColumns = new Dictionary<int, bool>();
-            Dictionary<SLCellPoint, SLCell> cellstore = new Dictionary<SLCellPoint, SLCell>();
+            SLCellWarehouse cellstore = new SLCellWarehouse();
 
             #region GetCells
             for (i = StartRowIndex; i <= EndRowIndex; ++i)
@@ -1002,13 +1006,13 @@ namespace SpreadsheetLight
 
             if (bFound)
             {
-                Dictionary<string, SLCellPoint> cellref = new Dictionary<string, SLCellPoint>();
+                Dictionary<int, HashSet<int>> multiCellRef = new Dictionary<int, HashSet<int>>();
                 for (i = StartRowIndex; i <= EndRowIndex; ++i)
                 {
+                    multiCellRef.Add(i, new HashSet<int>());
                     for (j = StartColumnIndex; j <= EndColumnIndex; ++j)
                     {
-                        pt = new SLCellPoint(i, j);
-                        cellref[SLTool.ToCellReference(i, j)] = pt;
+                        multiCellRef[i].Add(j);
                     }
                 }
 
@@ -1063,11 +1067,11 @@ namespace SpreadsheetLight
                             cell = (Cell)oxr.LoadCurrentElement();
                             if (cell.CellReference != null)
                             {
-                                if (cellref.ContainsKey(cell.CellReference.Value))
+                                if (SLTool.FormatCellReferenceToRowColumnIndex(cell.CellReference.Value, out i, out j))
                                 {
                                     c = new SLCell();
                                     c.FromCell(cell);
-                                    cellstore[cellref[cell.CellReference.Value]] = c.Clone();
+                                    cellstore.SetValue(i, j, c);
                                 }
                             }
                         }
@@ -1101,10 +1105,9 @@ namespace SpreadsheetLight
 
                     for (j = StartColumnIndex; j <= EndColumnIndex; ++j)
                     {
-                        pt = new SLCellPoint(i, j);
-                        if (slws.Cells.ContainsKey(pt))
+                        if (slws.CellWarehouse.Exists(i, j))
                         {
-                            cellstore[pt] = slws.Cells[pt].Clone();
+                            cellstore.SetValue(i, j, slws.CellWarehouse.Cells[i][j]);
                         }
                     }
                 }
@@ -1130,15 +1133,16 @@ namespace SpreadsheetLight
             {
                 bIsStringReference = true;
                 sAxisFormatCode = SLConstants.NumberFormatGeneral;
-                pt = new SLCellPoint(StartRowIndex, StartColumnIndex + 1);
-                if (cellstore.ContainsKey(pt))
+                iRowIndex = StartRowIndex;
+                iColumnIndex = StartColumnIndex + 1;
+                if (cellstore.Exists(iRowIndex, iColumnIndex))
                 {
                     // dates are also numbers, so we lump it together
-                    if (cellstore[pt].DataType == CellValues.Number)
+                    if (cellstore.Cells[iRowIndex][iColumnIndex].DataType == CellValues.Number)
                     {
                         bIsStringReference = false;
                         style = new SLStyle(SLConstants.OfficeThemeMajorLatinFont, SLConstants.OfficeThemeMinorLatinFont, new List<System.Drawing.Color>(), new List<System.Drawing.Color>());
-                        style.FromHash(listStyle[(int)cellstore[pt].StyleIndex]);
+                        style.FromHash(listStyle[(int)cellstore.Cells[iRowIndex][iColumnIndex].StyleIndex]);
                         this.TranslateStylesToStyleIds(ref style);
                         sAxisFormatCode = style.FormatCode;
                     }
@@ -1175,11 +1179,12 @@ namespace SpreadsheetLight
                 {
                     if (HiddenColumns.ContainsKey(j) && !HiddenColumns[j])
                     {
-                        pt = new SLCellPoint(StartRowIndex, j);
+                        iRowIndex = StartRowIndex;
+                        iColumnIndex = j;
                         sCellValue = string.Empty;
-                        if (cellstore.ContainsKey(pt))
+                        if (cellstore.Exists(iRowIndex, iColumnIndex))
                         {
-                            c = cellstore[pt];
+                            c = cellstore.Cells[iRowIndex][iColumnIndex];
                             sCellValue = this.GetCellTrueValue(c);
 
                             if (bIsStringReference)
@@ -1219,17 +1224,18 @@ namespace SpreadsheetLight
                 {
                     if (HiddenRows.ContainsKey(i) && !HiddenRows[i])
                     {
-                        ser = new SLC.SLDataSeries(SimpleTheme.listThemeColors);
+                        ser = new SLC.SLDataSeries(SimpleTheme.listThemeColors, SimpleTheme.ThrowExceptionsIfAny);
                         ser.Index = (uint)index;
                         ser.Order = (uint)index;
                         ser.IsStringReference = true;
 
                         sr = new SLC.SLStringReference();
-                        pt = new SLCellPoint(i, StartColumnIndex);
+                        iRowIndex = i;
+                        iColumnIndex = StartColumnIndex;
                         sCellValue = string.Empty;
-                        if (cellstore.ContainsKey(pt))
+                        if (cellstore.Exists(iRowIndex, iColumnIndex))
                         {
-                            c = cellstore[pt];
+                            c = cellstore.Cells[iRowIndex][iColumnIndex];
                             sCellValue = this.GetCellTrueValue(c);
                         }
                         sr.WorksheetName = WorksheetName;
@@ -1259,12 +1265,13 @@ namespace SpreadsheetLight
                         {
                             if (HiddenColumns.ContainsKey(j) && !HiddenColumns[j])
                             {
-                                pt = new SLCellPoint(i, j);
+                                iRowIndex = i;
+                                iColumnIndex = j;
                                 sCellValue = string.Empty;
                                 sFormatCode = string.Empty;
-                                if (cellstore.ContainsKey(pt))
+                                if (cellstore.Exists(iRowIndex, iColumnIndex))
                                 {
-                                    c = cellstore[pt];
+                                    c = cellstore.Cells[iRowIndex][iColumnIndex];
                                     sCellValue = this.GetCellTrueValue(c);
 
                                     style = new SLStyle(SLConstants.OfficeThemeMajorLatinFont, SLConstants.OfficeThemeMinorLatinFont, new List<System.Drawing.Color>(), new List<System.Drawing.Color>());
@@ -1296,15 +1303,16 @@ namespace SpreadsheetLight
             {
                 bIsStringReference = true;
                 sAxisFormatCode = SLConstants.NumberFormatGeneral;
-                pt = new SLCellPoint(StartRowIndex + 1, StartColumnIndex);
-                if (cellstore.ContainsKey(pt))
+                iRowIndex = StartRowIndex + 1;
+                iColumnIndex = StartColumnIndex;
+                if (cellstore.Exists(iRowIndex, iColumnIndex))
                 {
                     // dates are also numbers, so we lump it together
-                    if (cellstore[pt].DataType == CellValues.Number)
+                    if (cellstore.Cells[iRowIndex][iColumnIndex].DataType == CellValues.Number)
                     {
                         bIsStringReference = false;
                         style = new SLStyle(SLConstants.OfficeThemeMajorLatinFont, SLConstants.OfficeThemeMinorLatinFont, new List<System.Drawing.Color>(), new List<System.Drawing.Color>());
-                        style.FromHash(listStyle[(int)cellstore[pt].StyleIndex]);
+                        style.FromHash(listStyle[(int)cellstore.Cells[iRowIndex][iColumnIndex].StyleIndex]);
                         this.TranslateStylesToStyleIds(ref style);
                         sAxisFormatCode = style.FormatCode;
                     }
@@ -1340,11 +1348,12 @@ namespace SpreadsheetLight
                 {
                     if (HiddenRows.ContainsKey(i) && !HiddenRows[i])
                     {
-                        pt = new SLCellPoint(i, StartColumnIndex);
+                        iRowIndex = i;
+                        iColumnIndex = StartColumnIndex;
                         sCellValue = string.Empty;
-                        if (cellstore.ContainsKey(pt))
+                        if (cellstore.Exists(iRowIndex, iColumnIndex))
                         {
-                            c = cellstore[pt];
+                            c = cellstore.Cells[iRowIndex][iColumnIndex];
                             sCellValue = this.GetCellTrueValue(c);
 
                             if (bIsStringReference)
@@ -1384,17 +1393,18 @@ namespace SpreadsheetLight
                 {
                     if (HiddenColumns.ContainsKey(j) && !HiddenColumns[j])
                     {
-                        ser = new SLC.SLDataSeries(SimpleTheme.listThemeColors);
+                        ser = new SLC.SLDataSeries(SimpleTheme.listThemeColors, SimpleTheme.ThrowExceptionsIfAny);
                         ser.Index = (uint)index;
                         ser.Order = (uint)index;
                         ser.IsStringReference = true;
 
                         sr = new SLC.SLStringReference();
-                        pt = new SLCellPoint(StartRowIndex, j);
+                        iRowIndex = StartRowIndex;
+                        iColumnIndex = j;
                         sCellValue = string.Empty;
-                        if (cellstore.ContainsKey(pt))
+                        if (cellstore.Exists(iRowIndex, iColumnIndex))
                         {
-                            c = cellstore[pt];
+                            c = cellstore.Cells[iRowIndex][iColumnIndex];
                             sCellValue = this.GetCellTrueValue(c);
                         }
                         sr.WorksheetName = WorksheetName;
@@ -1424,12 +1434,13 @@ namespace SpreadsheetLight
                         {
                             if (HiddenRows.ContainsKey(i) && !HiddenRows[i])
                             {
-                                pt = new SLCellPoint(i, j);
+                                iRowIndex = i;
+                                iColumnIndex = j;
                                 sCellValue = string.Empty;
                                 sFormatCode = string.Empty;
-                                if (cellstore.ContainsKey(pt))
+                                if (cellstore.Exists(iRowIndex, iColumnIndex))
                                 {
-                                    c = cellstore[pt];
+                                    c = cellstore.Cells[iRowIndex][iColumnIndex];
                                     sCellValue = this.GetCellTrueValue(c);
 
                                     style = new SLStyle(SLConstants.OfficeThemeMajorLatinFont, SLConstants.OfficeThemeMinorLatinFont, new List<System.Drawing.Color>(), new List<System.Drawing.Color>());
