@@ -19,22 +19,12 @@ name: 3.5.0-$(Date:yyyyMMdd)-$(Rev:r)
 
 steps:
 
-- task: UseDotNet@2
-  inputs:
-    packageType: 'sdk'
-    version: '6.0.x'
-
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'build'
-    projects: '$(solution)'
 
 - task: DotNetCoreCLI@2
   inputs:
     command: 'pack'
     packagesToPack: '**/*.csproj'
     packDirectory: $(Build.ArtifactStagingDirectory)
-    nobuild: true
     includesymbols: true
     versioningScheme: 'byBuildNumber'
 - task: PublishPipelineArtifact@1
