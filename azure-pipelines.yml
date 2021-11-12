@@ -19,14 +19,14 @@ name: 3.5.0-build.$(Date:yyyyMMdd).$(Rev:r)
 
 steps:
 
-
 - task: DotNetCoreCLI@2
   inputs:
     command: 'pack'
     packagesToPack: '**/*.csproj'
     packDirectory: $(Build.ArtifactStagingDirectory)
     includesymbols: true
-    versioningScheme: 'byBuildNumber'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'Build.BuildNumber'
 - task: PublishPipelineArtifact@1
   inputs:
     targetPath: '$(Build.ArtifactStagingDirectory)'
