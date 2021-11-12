@@ -13,6 +13,9 @@ variables:
   solution: '**/*.sln'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
+  version: '3.5.0'
+
+name: 3.5.0-$(Date:yyyyMMdd)-$(Rev:r)
 
 steps:
 
@@ -25,3 +28,17 @@ steps:
   inputs:
     command: 'build'
     projects: '$(solution)'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/*.csproj'
+    packDirectory: $(Build.ArtifactStagingDirectory)
+    nobuild: true
+    includesymbols: true
+    versioningScheme: 'byBuildNumber'
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)'
+    artifact: 'nuget'
+    publishLocation: 'pipeline'
