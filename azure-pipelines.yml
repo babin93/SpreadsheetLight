@@ -27,7 +27,7 @@ steps:
     includesymbols: true
     includesource: true
     versioningScheme: 'byEnvVar'
-    versionEnvVar: 'Build.BuildNumber'
+    versionEnvVar: 'version'
     buildProperties: 'ContinuousIntegrationBuild=true'
     
 - task: PublishPipelineArtifact@1
