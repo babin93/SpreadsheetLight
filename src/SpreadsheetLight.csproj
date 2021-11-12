@@ -19,7 +19,7 @@
 
       Sources: https://github.com/babin93/SpreadsheetLight
     </Description>
-    <PackageLicenseFile>../license.txt</PackageLicenseFile>
+    <PackageLicenseFile>license.txt</PackageLicenseFile>
     <RepositoryUrl>https://github.com/babin93/SpreadsheetLight</RepositoryUrl>
     <PackageProjectUrl>http://spreadsheetlight.com/</PackageProjectUrl>
     <PackageIcon>spreadsheetlight_icon.png</PackageIcon>
