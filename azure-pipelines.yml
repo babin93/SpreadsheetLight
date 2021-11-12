@@ -28,7 +28,8 @@ steps:
     includesource: true
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'Build.BuildNumber'
-
+    buildProperties: 'ContinuousIntegrationBuild=true'
+    
 - task: PublishPipelineArtifact@1
   inputs:
     targetPath: '$(Build.ArtifactStagingDirectory)'
