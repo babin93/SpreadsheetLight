@@ -19,12 +19,31 @@
 
       Sources: https://github.com/babin93/SpreadsheetLight
     </Description>
+    <PackageLicenseFile>../license.txt</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/babin93/SpreadsheetLight</RepositoryUrl>
+    <PackageProjectUrl>http://spreadsheetlight.com/</PackageProjectUrl>
+    <PackageIcon>spreadsheetlight_icon.png</PackageIcon>
+    <PackageIconUrl />
+    <PackageTags>excel spreadsheetlight openxml</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <Copyright>Copyright (c) 2011 Vincent Tan Wai Lip</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" Version="2.11.3" />
     <PackageReference Include="System.Drawing.Common" Version="5.0.0" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\license.txt">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+    <None Include="spreadsheetlight_icon.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
